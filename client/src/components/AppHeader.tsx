@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Menu, Search, X } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -24,6 +24,7 @@ export function AppHeader({
   fetchPathSuggestions,
   onStartScan,
 }: AppHeaderProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [pathSuggestions, setPathSuggestions] = useState<string[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
@@ -74,9 +75,11 @@ export function AppHeader({
 
   function applySuggestion(value: string): void {
     onScanPathChange(value)
-    setShowSuggestions(false)
     setPathSuggestions([])
     setActiveSuggestionIndex(-1)
+    // Refocus input and keep dropdown ready for next typing
+    inputRef.current?.focus()
+    setShowSuggestions(true)
   }
 
   return (
@@ -105,6 +108,7 @@ export function AppHeader({
               Scan path
             </label>
             <Input
+              ref={inputRef}
               id="scan-path"
               value={scanPath}
               onChange={(event) => onScanPathChange(event.target.value)}
