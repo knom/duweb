@@ -1,62 +1,146 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">DiskUsage Web Icon</title>
-  <desc id="desc">A large disk usage chart with web grid lines and a small fox mascot accent.</desc>
-
-  <defs>
-    <radialGradient id="disk" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(230 210) rotate(45) scale(260)">
-      <stop offset="0" stop-color="#F8FAFC"/>
-      <stop offset="1" stop-color="#CBD5E1"/>
-    </radialGradient>
-    <linearGradient id="sliceA" x1="256" y1="70" x2="430" y2="250" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FB7185"/>
-      <stop offset="1" stop-color="#F43F5E"/>
-    </linearGradient>
-    <linearGradient id="sliceB" x1="98" y1="286" x2="300" y2="468" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#22D3EE"/>
-      <stop offset="1" stop-color="#0369A1"/>
-    </linearGradient>
-    <linearGradient id="sliceC" x1="70" y1="228" x2="214" y2="114" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FBBF24"/>
-      <stop offset="1" stop-color="#F59E0B"/>
-    </linearGradient>
-    <clipPath id="diskClip">
-      <circle cx="256" cy="268" r="178"/>
-    </clipPath>
-    <filter id="shadow" x="40" y="46" width="432" height="432" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.24"/>
-    </filter>
-    <filter id="foxShadow" x="292" y="30" width="206" height="206" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1E293B" flood-opacity="0.24"/>
-    </filter>
-  </defs>
-
-  <g filter="url(#shadow)">
-    <circle cx="256" cy="268" r="178" fill="url(#disk)"/>
-
-    <g clip-path="url(#diskClip)">
-      <path d="M256 268L256 90C354.307 90 434 169.693 434 268H256Z" fill="url(#sliceA)"/>
-      <path d="M256 268L98 348C66.3084 285.409 66.3084 210.591 98 148L256 268Z" fill="url(#sliceC)"/>
-      <path d="M256 268L308 438C231.046 461.716 149.995 426.859 111.5 356.5L256 268Z" fill="url(#sliceB)"/>
-
-      <g stroke="#FFFFFF" stroke-opacity="0.62" stroke-width="8">
-        <path d="M78 268H434"/>
-        <path d="M256 90V446"/>
-        <path d="M122 164C161 199 188 233 203 268C188 303 161 337 122 372"/>
-        <path d="M390 164C351 199 324 233 309 268C324 303 351 337 390 372"/>
-        <path d="M164 124C199 163 233 190 268 205C303 190 337 163 372 124"/>
-        <path d="M164 412C199 373 233 346 268 331C303 346 337 373 372 412"/>
-      </g>
-    </g>
-
-    <circle cx="256" cy="268" r="178" stroke="#94A3B8" stroke-width="5"/>
-    <circle cx="256" cy="268" r="26" fill="#0F172A" fill-opacity="0.9"/>
-    <circle cx="256" cy="268" r="10" fill="#F8FAFC"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   fill="none"
+   role="img"
+   aria-labelledby="title desc"
+   version="1.1"
+   id="svg14"
+   sodipodi:docname="favicon.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   inkscape:export-filename="favicon-512"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs14" />
+  <sodipodi:namedview
+     id="namedview14"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.5761719"
+     inkscape:cx="256"
+     inkscape:cy="256"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg14" />
+  <title
+     id="title">DiskUsage Web Icon</title>
+  <desc
+     id="desc">A disk usage chart with web grid lines.</desc>
+  <!-- In-bounds faux shadow (fully inside canvas) -->
+  <circle
+     cx="256"
+     cy="278"
+     r="170"
+     fill="#0F172A"
+     fill-opacity="0.16"
+     id="circle1" />
+  <circle
+     cx="256"
+     cy="268"
+     r="178"
+     fill="#E2E8F0"
+     id="circle2" />
+  <path
+     d="M256 268L256 90C354.307 90 434 169.693 434 268H256Z"
+     fill="#F43F5E"
+     id="path2" />
+  <path
+     d="M 256,285.86717 100.20595,358 c -31.249139,-56.43583 -31.249139,-123.89627 0,-180.3321 z"
+     fill="#f59e0b"
+     id="path3"
+     style="stroke-width:0.942905" />
+  <path
+     d="M 252.97789,268 308,438 C 226.57363,461.716 140.81216,426.859 100.07993,356.5 Z"
+     fill="#0284c7"
+     id="path4"
+     style="stroke-width:1.02865" />
+  <g
+     stroke="#FFFFFF"
+     stroke-opacity="0.62"
+     stroke-width="8"
+     id="g10">
+    <path
+       d="M78 268H434"
+       id="path5" />
+    <path
+       d="M256 90V446"
+       id="path6" />
+    <path
+       d="M122 164C161 199 188 233 203 268C188 303 161 337 122 372"
+       id="path7" />
+    <path
+       d="M390 164C351 199 324 233 309 268C324 303 351 337 390 372"
+       id="path8" />
+    <path
+       d="M164 124C199 163 233 190 268 205C303 190 337 163 372 124"
+       id="path9" />
+    <path
+       d="M164 412C199 373 233 346 268 331C303 346 337 373 372 412"
+       id="path10" />
   </g>
-
-  <g>
-    <rect x="332" y="344" width="30" height="88" rx="8" fill="#0F172A" fill-opacity="0.88"/>
-    <rect x="370" y="308" width="30" height="124" rx="8" fill="#0F172A" fill-opacity="0.88"/>
-    <rect x="408" y="268" width="30" height="164" rx="8" fill="#0F172A" fill-opacity="0.88"/>
+  <circle
+     cx="256"
+     cy="268"
+     r="178"
+     stroke="#94A3B8"
+     stroke-width="5"
+     id="circle10" />
+  <circle
+     cx="256"
+     cy="268"
+     r="26"
+     fill="#0F172A"
+     fill-opacity="0.9"
+     id="circle11" />
+  <circle
+     cx="256"
+     cy="268"
+     r="10"
+     fill="#F8FAFC"
+     id="circle12" />
+  <g
+     id="g14">
+    <rect
+       x="332"
+       y="344"
+       width="30"
+       height="88"
+       rx="8"
+       fill="#0F172A"
+       fill-opacity="0.88"
+       id="rect12" />
+    <rect
+       x="370"
+       y="308"
+       width="30"
+       height="124"
+       rx="8"
+       fill="#0F172A"
+       fill-opacity="0.88"
+       id="rect13" />
+    <rect
+       x="408"
+       y="268"
+       width="30"
+       height="164"
+       rx="8"
+       fill="#0F172A"
+       fill-opacity="0.88"
+       id="rect14" />
   </g>
-
 </svg>
