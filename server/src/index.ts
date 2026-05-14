@@ -46,7 +46,6 @@ const server = app.listen(PORT, () => {
 
 // Keep a strong reference so the process stays alive under tsx/VS Code debug sessions.
 server.ref();
-globalThis.__diskScopeServer = server;
 
 process.on('SIGINT', () => {
   server.close(() => process.exit(0));
