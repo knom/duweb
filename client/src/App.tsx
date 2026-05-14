@@ -116,7 +116,7 @@ function App() {
 
   const statusLabel = useMemo(() => {
     if (!job) {
-      return 'No job started'
+      return 'No job selected'
     }
     return `${job.status.toUpperCase()} - dirs ${job.progress.directoriesVisited}, files ${job.progress.filesVisited}`
   }, [job])
@@ -224,13 +224,10 @@ function App() {
           sidebarOpen={sidebarOpen}
           scanPath={scanPath}
           starting={starting}
-          hasSelectedJob={Boolean(job)}
           onToggleSidebar={() => setSidebarOpen((value) => !value)}
           onScanPathChange={setScanPath}
           fetchPathSuggestions={fetchPathSuggestions}
           onStartScan={startScan}
-          onRerunSelectedJob={rerunSelectedJob}
-          onRemoveSelectedJob={removeSelectedJob}
         />
 
         {sidebarOpen && (
@@ -252,6 +249,7 @@ function App() {
             filteredJobs={filteredJobs}
             selectedJobId={job?.id}
             error={job?.error ?? error}
+            hasSelectedJob={Boolean(job)}
             onCloseSidebar={() => setSidebarOpen(false)}
             onSearchChange={setSearch}
             onFilterChange={setFilter}
@@ -259,6 +257,8 @@ function App() {
               setJob(selectedJob)
               setSidebarOpen(false)
             }}
+            onRerunSelectedJob={rerunSelectedJob}
+            onRemoveSelectedJob={removeSelectedJob}
           />
 
           <DirectoryTreeCard job={job} />

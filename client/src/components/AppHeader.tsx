@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, Menu, Play, Trash2, X } from 'lucide-react'
+import { Loader2, Menu, Search, X } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 
@@ -8,13 +8,10 @@ interface AppHeaderProps {
   sidebarOpen: boolean
   scanPath: string
   starting: boolean
-  hasSelectedJob: boolean
   onToggleSidebar: () => void
   onScanPathChange: (value: string) => void
   fetchPathSuggestions: (query: string, signal?: AbortSignal) => Promise<string[]>
   onStartScan: () => void
-  onRerunSelectedJob: () => void
-  onRemoveSelectedJob: () => void
 }
 
 export function AppHeader({
@@ -22,13 +19,10 @@ export function AppHeader({
   sidebarOpen,
   scanPath,
   starting,
-  hasSelectedJob,
   onToggleSidebar,
   onScanPathChange,
   fetchPathSuggestions,
   onStartScan,
-  onRerunSelectedJob,
-  onRemoveSelectedJob,
 }: AppHeaderProps) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [pathSuggestions, setPathSuggestions] = useState<string[]>([])
@@ -180,29 +174,10 @@ export function AppHeader({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <Button type="button" className="w-full sm:w-auto" onClick={onStartScan} disabled={starting || !scanPath.trim()}>
+              <Search className="h-4 w-4" />
               {starting ? 'Starting...' : 'Scan'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={onRerunSelectedJob}
-              disabled={!hasSelectedJob}
-            >
-              <Play className="h-4 w-4" />
-              Rerun
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={onRemoveSelectedJob}
-              disabled={!hasSelectedJob}
-            >
-              <Trash2 className="h-4 w-4" />
-              Remove
             </Button>
           </div>
         </div>

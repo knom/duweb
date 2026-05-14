@@ -1,4 +1,4 @@
-import { FolderTree, Loader2, Search, X } from 'lucide-react'
+import { FolderTree, Loader2, Play, Search, Trash2, X } from 'lucide-react'
 import type { JobStatus, ScanJob } from '../types/scan'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -15,10 +15,13 @@ interface JobsSidebarProps {
   filteredJobs: ScanJob[]
   selectedJobId?: string
   error: string
+  hasSelectedJob: boolean
   onCloseSidebar: () => void
   onSearchChange: (value: string) => void
   onFilterChange: (value: 'all' | JobStatus) => void
   onSelectJob: (job: ScanJob) => void
+  onRerunSelectedJob: () => void
+  onRemoveSelectedJob: () => void
 }
 
 export function JobsSidebar({
@@ -30,10 +33,13 @@ export function JobsSidebar({
   filteredJobs,
   selectedJobId,
   error,
+  hasSelectedJob,
   onCloseSidebar,
   onSearchChange,
   onFilterChange,
   onSelectJob,
+  onRerunSelectedJob,
+  onRemoveSelectedJob,
 }: JobsSidebarProps) {
   return (
     <aside
@@ -86,6 +92,29 @@ export function JobsSidebar({
                 {option}
               </Button>
             ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={onRerunSelectedJob}
+              disabled={!hasSelectedJob}
+            >
+              <Play className="h-4 w-4" />
+              Rerun
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={onRemoveSelectedJob}
+              disabled={!hasSelectedJob}
+            >
+              <Trash2 className="h-4 w-4" />
+              Remove
+            </Button>
           </div>
 
           {error && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
