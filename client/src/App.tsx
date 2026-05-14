@@ -217,8 +217,8 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_10%_15%,rgba(14,165,233,0.18),transparent_38%),radial-gradient(circle_at_88%_0%,rgba(16,185,129,0.14),transparent_36%),linear-gradient(170deg,#f5f7fb_0%,#eef3f8_42%,#f8fafc_100%)] text-slate-900">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 p-0 md:p-6">
+    <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_10%_15%,rgba(14,165,233,0.18),transparent_38%),radial-gradient(circle_at_88%_0%,rgba(16,185,129,0.14),transparent_36%),linear-gradient(170deg,#f5f7fb_0%,#eef3f8_42%,#f8fafc_100%)] text-slate-900">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col gap-4 p-0 md:p-6">
         <AppHeader
           logoUrl={logoUrl}
           sidebarOpen={sidebarOpen}
@@ -239,7 +239,7 @@ function App() {
           />
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid flex-1 min-h-0 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
           <JobsSidebar
             sidebarOpen={sidebarOpen}
             statusLabel={statusLabel}

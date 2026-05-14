@@ -9,7 +9,7 @@ interface DirectoryTreeCardProps {
 
 export function DirectoryTreeCard({ job }: DirectoryTreeCardProps) {
   return (
-    <Card className="h-[calc(100vh-11rem)] min-h-[500px] overflow-hidden lg:col-start-2">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden lg:col-start-2">
       <CardHeader className="border-b border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -24,7 +24,7 @@ export function DirectoryTreeCard({ job }: DirectoryTreeCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="h-[calc(100%-5rem)] overflow-auto p-0">
+      <CardContent className="flex-1 overflow-auto p-0">
         {!job?.result ? (
           <div className="px-4 py-6 text-sm text-slate-500">Select a scan to view the disk usage.</div>
         ) : (
