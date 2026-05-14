@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Server (Node + TS)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--import", "tsx", "--enable-source-maps"],
+      "program": "${workspaceFolder}/server/src/index.ts",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "PORT": "3001"
+      }
+    },
+    {
+      "name": "Attach Server (9229)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "cwd": "${workspaceFolder}/server",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug Client (Vite + Chrome)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev --prefix client",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome",
+        "webRoot": "${workspaceFolder}/client"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Server (Node + TS)", "Debug Client (Vite + Chrome)"]
+    }
+  ]
+}

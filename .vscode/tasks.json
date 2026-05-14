@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:server",
+      "type": "shell",
+      "command": "cd server && npm run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build:client",
+      "type": "shell",
+      "command": "cd client && npm run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "build:all",
+      "dependsOn": ["build:server", "build:client"],
+      "dependsOrder": "sequence",
+      "group": "build"
+    },
+    {
+      "label": "run:server",
+      "type": "shell",
+      "command": "cd server && npm run dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "run:client",
+      "type": "shell",
+      "command": "cd client && npm run dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "run:all",
+      "dependsOn": ["run:server", "run:client"],
+      "dependsOrder": "parallel"
+    }
+  ]
+}

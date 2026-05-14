@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+client/dist/
+server/dist/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Runtime / temp
+*.pid
+*.pid.lock
+*.seed
+*.tmp
+*.temp
+.tmp/
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
+
+# IDE/editor files
+.idea/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Tool caches
+.eslintcache
+.vite/
