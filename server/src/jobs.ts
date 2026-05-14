@@ -11,9 +11,11 @@ class JobStore {
   constructor(private readonly repository: JobRepository = createJobRepository()) {
     this.repository.initialize();
 
-    for (const job of this.repository.listJobs()) {
+    const persistedJobs = this.repository.listJobs();
+    for (const job of persistedJobs) {
       this.jobs.set(job.id, job);
     }
+    console.log(`[JobStore] Initialized with ${persistedJobs.length} persisted job(s)`);
   }
 
   createScanJob(rootPath: string): ScanJob {
@@ -30,6 +32,7 @@ class JobStore {
 
     this.jobs.set(created.id, created);
     this.repository.saveJob(created);
+    console.log(`[JobStore] Created job ${created.id}: ${rootPath}`);
 
     setImmediate(() => {
       void this.runJob(created.id);
@@ -40,21 +43,28 @@ class JobStore {
 
   async getJob(id: string): Promise<ScanJob | undefined> {
     const cached = this.jobs.get(id);
-    if (!cached) return undefined;
+    if (!cached) {
+      console.debug(`[JobStore] Job not found: ${id}`);
+      return undefined;
+    }
 
     // Lazy-load the result tree from Redis/DB on first access for completed jobs
     if (cached.status === 'completed' && !cached.result) {
+      console.debug(`[JobStore] Loading result for job ${id}`);
       // Try Redis first
       let result = await redisCache.getCached(id);
       if (result) {
+        console.debug(`[JobStore] Result loaded from Redis cache for job ${id}`);
         cached.result = result;
       } else {
+        console.debug(`[JobStore] Result not in Redis, loading from database for job ${id}`);
         // Fall back to DB
         const full = this.repository.getJob(id);
         if (full?.result) {
           cached.result = full.result;
           // Cache in Redis for future access
           await redisCache.setCached(id, full.result);
+          console.debug(`[JobStore] Result loaded from database and cached in Redis for job ${id}`);
         }
       }
     }
@@ -63,21 +73,25 @@ class JobStore {
   }
 
   removeJob(id: string): boolean {
-    const removed = this.repository.deleteJob(id)
+    const removed = this.repository.deleteJob(id);
     if (removed) {
-      this.jobs.delete(id)
+      this.jobs.delete(id);
+      console.log(`[JobStore] Deleted job: ${id}`);
+    } else {
+      console.debug(`[JobStore] Could not delete job (not found): ${id}`);
     }
-
-    return removed
+    return removed;
   }
 
   rerunJob(id: string): ScanJob | undefined {
-    const source = this.jobs.get(id)
+    const source = this.jobs.get(id);
     if (!source) {
-      return undefined
+      console.debug(`[JobStore] Cannot rerun: job not found: ${id}`);
+      return undefined;
     }
 
-    return this.createScanJob(source.rootPath)
+    console.log(`[JobStore] Rerunning job ${id}: ${source.rootPath}`);
+    return this.createScanJob(source.rootPath);
   }
 
   listJobs(): ScanJob[] {
@@ -96,13 +110,21 @@ class JobStore {
 
     job.status = 'running';
     this.repository.saveJob(job);
+    console.log(`[JobStore] Job running: ${id} (${job.rootPath})`);
 
     try {
       job.result = await scanDirectoryTree(job.rootPath, job.progress);
       job.status = 'completed';
+      const duration = job.progress.endedAt
+        ? new Date(job.progress.endedAt).getTime() - new Date(job.progress.startedAt).getTime()
+        : 0;
+      console.log(
+        `[JobStore] Job completed: ${id} (${job.progress.directoriesVisited} dirs, ${job.progress.filesVisited} files, ${duration}ms)`,
+      );
     } catch (error) {
       job.status = 'failed';
       job.error = error instanceof Error ? error.message : 'Unknown scan error';
+      console.error(`[JobStore] Job failed: ${id}`, error);
     } finally {
       job.progress.endedAt = new Date().toISOString();
       this.repository.saveJob(job);
