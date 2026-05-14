@@ -303,17 +303,36 @@ function App() {
                   placeholder="/home"
                 />
               </div>
-              <Button type="button" onClick={startScan} disabled={starting || !scanPath.trim()}>
-                {starting ? 'Starting...' : 'Scan'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={rerunSelectedJob} disabled={!job}>
-                <Play className="h-4 w-4" />
-                Rerun
-              </Button>
-              <Button type="button" variant="secondary" onClick={removeSelectedJob} disabled={!job}>
-                <Trash2 className="h-4 w-4" />
-                Remove
-              </Button>
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onClick={startScan}
+                  disabled={starting || !scanPath.trim()}
+                >
+                  {starting ? 'Starting...' : 'Scan'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  onClick={rerunSelectedJob}
+                  disabled={!job}
+                >
+                  <Play className="h-4 w-4" />
+                  Rerun
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  onClick={removeSelectedJob}
+                  disabled={!job}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              </div>
               <Button
                 type="button"
                 variant="secondary"
