@@ -10,6 +10,14 @@ services:
       NODE_ENV: production
       PORT: 8080
       BASE_PATH: /duweb
+      # Auth: set REQUIRE_AUTH=true to reject requests missing username/groups headers.
+      # REQUIRE_AUTH: "false"
+      # Override the proxy header names read for each auth field (username and groups are required for auth):
+      # AUTH_HEADER_USERNAME: x-forwarded-user
+      # AUTH_HEADER_GROUPS: x-forwarded-groups
+      # AUTH_HEADER_EMAIL: x-forwarded-email
+      # AUTH_HEADER_NAME: x-forwarded-name
+      # AUTH_HEADER_UID: x-forwarded-uid
     ports:
       - "8080:8080"
     volumes:

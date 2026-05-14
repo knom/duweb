@@ -9,6 +9,16 @@ import { jobStore } from './jobs.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const rawBasePath = process.env.BASE_PATH ?? '';
+
+// Auth configuration
+const REQUIRE_AUTH = process.env.REQUIRE_AUTH === 'true';
+const authHeaders = {
+  username: process.env.AUTH_HEADER_USERNAME ?? 'x-forwarded-user',
+  groups:   process.env.AUTH_HEADER_GROUPS   ?? 'x-forwarded-groups',
+  email:    process.env.AUTH_HEADER_EMAIL    ?? 'x-forwarded-email',
+  name:     process.env.AUTH_HEADER_NAME     ?? 'x-forwarded-name',
+  uid:      process.env.AUTH_HEADER_UID      ?? 'x-forwarded-uid',
+};
 const normalizedBasePath =
   rawBasePath === '' || rawBasePath === '/'
     ? ''
@@ -78,15 +88,12 @@ function parseGroups(rawGroups: string | undefined): string[] {
 }
 
 function getProxyIdentity(req: Request): ProxyIdentity {
-  const username =
-    readHeader(req, 'x-forwarded-user') ??
-    readHeader(req, 'x-forwarded-preferred-username') ??
-    readHeader(req, 'x-user');
-  const groupsHeader = readHeader(req, 'x-forwarded-groups') ?? readHeader(req, 'x-groups');
+  const username = readHeader(req, authHeaders.username);
+  const groupsHeader = readHeader(req, authHeaders.groups);
   const groups = parseGroups(groupsHeader);
-  const email = readHeader(req, 'x-forwarded-email') ?? readHeader(req, 'x-email');
-  const name = readHeader(req, 'x-forwarded-name') ?? readHeader(req, 'x-name');
-  const uid = readHeader(req, 'x-forwarded-sub') ?? readHeader(req, 'x-forwarded-uid') ?? readHeader(req, 'x-uid');
+  const email = readHeader(req, authHeaders.email);
+  const name = readHeader(req, authHeaders.name);
+  const uid = readHeader(req, authHeaders.uid);
 
   const identity: ProxyIdentity = { groups };
   if (username) {
@@ -109,7 +116,12 @@ app.use(cors());
 app.use(express.json());
 
 api.use((req, res, next) => {
-  res.locals.identity = getProxyIdentity(req);
+  const identity = getProxyIdentity(req);
+  res.locals.identity = identity;
+  if (REQUIRE_AUTH && (!identity.username || identity.groups.length === 0)) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return;
+  }
   next();
 });
 
