@@ -4,8 +4,7 @@ import type { DirectoryNode } from '../types.js';
 let redisClient: ReturnType<typeof createClient> | null = null;
 let isConnected = false;
 
-async function connect(): Promise<void> {
-  const redisUrl = process.env.REDIS_URL;
+async function connect(redisUrl?: string): Promise<void> {
   if (!redisUrl) {
     console.warn('⚠️  Redis cache disabled: REDIS_URL environment variable not set');
     return;

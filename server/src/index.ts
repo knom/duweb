@@ -1,77 +1,27 @@
-import cors from 'cors';
-import express from 'express';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { jobStore } from './jobs.js';
+import { createApp } from './app.js';
 import { redisCache } from './cache/redisCache.js';
-import { createAuthMiddleware, createUIAuthMiddleware, REQUIRE_AUTH } from './middleware/auth.js';
-import { createLoggingMiddleware } from './middleware/logging.js';
-import { registerHealthRoutes } from './routes/health.js';
-import { registerJobRoutes } from './routes/jobs.js';
-import { registerPathRoutes } from './routes/paths.js';
-import { escapeRegExp } from './utils/path.js';
+import { loadConfig } from './config.js';
 
-const PORT = Number(process.env.PORT ?? 3001);
-const rawBasePath = process.env.BASE_PATH ?? '';
-const normalizedBasePath =
-  rawBasePath === '' || rawBasePath === '/'
-    ? ''
-    : `/${rawBasePath.replace(/^\/+|\/+$/g, '')}`;
-const apiPrefix = `${normalizedBasePath}/api`;
-
-const app = express();
-const api = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const clientDistPath = path.resolve(__dirname, '../../client-dist');
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(createLoggingMiddleware());
-
-// API auth and routes
-api.use(createAuthMiddleware());
-registerHealthRoutes(api);
-registerJobRoutes(api);
-registerPathRoutes(api);
-
-app.use(apiPrefix, api);
-
-// Static UI serving with auth middleware
-if (existsSync(clientDistPath)) {
-  const uiMountPath = normalizedBasePath || '/';
-  
-  // Apply UI auth middleware before serving static files
-  app.use(uiMountPath, createUIAuthMiddleware());
-  app.use(uiMountPath, express.static(clientDistPath));
-
-  const uiMatcher =
-    normalizedBasePath === ''
-      ? /^\/(?!api(?:\/|$)).*/
-      : new RegExp(`^${escapeRegExp(normalizedBasePath)}(?:\/.*)?$`);
-
-  app.get(uiMatcher, (_req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-}
+const config = loadConfig();
+const app = createApp(config);
 
 // Server startup
-const server = app.listen(PORT, () => {
+const server = app.listen(config.port, () => {
   console.log(`
    Disk Usage Web Server
    -----------------------------------
-   Listening on port: ${PORT}
-   API prefix: ${apiPrefix}
-   Auth required: ${REQUIRE_AUTH ? 'YES' : 'NO '}
+   Listening on port: ${config.port}
+   API prefix: ${config.apiPrefix}
+   Auth required: ${config.requireAuth ? 'YES' : 'NO '}
+   Auth group: ${config.requireAuthGroup ?? '-'}
+   Redis cache: ${config.redisUrl ? 'ENABLED' : 'DISABLED'}
   `);
 });
 
 // Initialize Redis cache
 console.log('[Init] Initializing Redis cache...');
-await redisCache.connect();
+await redisCache.connect(config.redisUrl);
 
 // Keep a strong reference so the process stays alive under tsx/VS Code debug sessions.
 server.ref();
