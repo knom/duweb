@@ -26,7 +26,7 @@ export function DirectoryTreeCard({ job }: DirectoryTreeCardProps) {
 
       <CardContent className="h-[calc(100%-5rem)] overflow-auto p-0">
         {!job?.result ? (
-          <div className="px-4 py-6 text-sm text-slate-500">No completed scan yet.</div>
+          <div className="px-4 py-6 text-sm text-slate-500">Select a scan to view the disk usage.</div>
         ) : (
           <ul className="px-2 py-2">
             <TreeNodeRow node={job.result} depth={0} />

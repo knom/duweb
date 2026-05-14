@@ -80,7 +80,7 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-3 z-30 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
+    <header className="sticky top-0 z-30 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight md:gap-3 md:text-2xl">

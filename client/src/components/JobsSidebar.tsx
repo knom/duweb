@@ -44,11 +44,11 @@ export function JobsSidebar({
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 w-[340px] max-w-[86vw] p-4 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:p-0',
+        'fixed inset-y-0 left-0 z-50 w-[340px] max-w-[86vw] p-0 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:p-0',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}
     >
-      <Card className="h-full min-h-[500px] overflow-hidden lg:h-[calc(100vh-11rem)]">
+      <Card className="h-full min-h-0 overflow-hidden rounded-none lg:h-[calc(100vh-11rem)] lg:min-h-[500px] lg:rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-2">
