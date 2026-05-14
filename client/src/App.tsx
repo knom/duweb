@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderTree, Menu, Play, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, FolderTree, Loader2, Menu, Play, Search, Trash2, X } from 'lucide-react'
 import { Badge } from './components/ui/badge'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
@@ -110,6 +110,7 @@ function App() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | JobStatus>('all')
   const [error, setError] = useState<string>('')
+  const [loadingJobs, setLoadingJobs] = useState(true)
   const [starting, setStarting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
@@ -119,9 +120,14 @@ function App() {
     let cancelled = false
 
     async function loadJobs() {
+      setLoadingJobs(true)
+
       try {
         const response = await fetch(apiUrl('/jobs'))
         if (!response.ok) {
+          if (!cancelled) {
+            setError('Unable to load jobs.')
+          }
           return
         }
 
@@ -141,6 +147,10 @@ function App() {
       } catch {
         if (!cancelled) {
           setError('Server is not reachable. Start the backend on port 3001.')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingJobs(false)
         }
       }
     }
@@ -173,6 +183,14 @@ function App() {
       window.clearInterval(timer)
     }
   }, [job])
+
+  useEffect(() => {
+    if (!job) {
+      return
+    }
+
+    setScanPath(job.rootPath)
+  }, [job?.id, job?.rootPath])
 
   const statusLabel = useMemo(() => {
     if (!job) {
@@ -416,7 +434,12 @@ function App() {
               )}
 
               <div className="overflow-y-auto rounded-lg border border-slate-200">
-                {filteredJobs.length === 0 ? (
+                {loadingJobs ? (
+                  <div className="flex items-center gap-2 px-3 py-4 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    Loading jobs...
+                  </div>
+                ) : filteredJobs.length === 0 ? (
                   <div className="px-3 py-4 text-sm text-slate-500">No jobs match this filter.</div>
                 ) : (
                   <ul className="divide-y divide-slate-200">
@@ -433,7 +456,6 @@ function App() {
                             )}
                             onClick={() => {
                               setJob(item)
-                              setScanPath(item.rootPath)
                               setSidebarOpen(false)
                             }}
                           >
