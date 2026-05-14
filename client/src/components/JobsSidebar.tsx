@@ -1,0 +1,132 @@
+import { FolderTree, Loader2, Search, X } from 'lucide-react'
+import type { JobStatus, ScanJob } from '../types/scan'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Input } from './ui/input'
+import { cn } from '../lib/utils'
+
+interface JobsSidebarProps {
+  sidebarOpen: boolean
+  statusLabel: string
+  search: string
+  filter: 'all' | JobStatus
+  loadingJobs: boolean
+  filteredJobs: ScanJob[]
+  selectedJobId?: string
+  error: string
+  onCloseSidebar: () => void
+  onSearchChange: (value: string) => void
+  onFilterChange: (value: 'all' | JobStatus) => void
+  onSelectJob: (job: ScanJob) => void
+}
+
+export function JobsSidebar({
+  sidebarOpen,
+  statusLabel,
+  search,
+  filter,
+  loadingJobs,
+  filteredJobs,
+  selectedJobId,
+  error,
+  onCloseSidebar,
+  onSearchChange,
+  onFilterChange,
+  onSelectJob,
+}: JobsSidebarProps) {
+  return (
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 z-50 w-[340px] max-w-[86vw] p-4 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:p-0',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+      )}
+    >
+      <Card className="h-full min-h-[500px] overflow-hidden lg:h-[calc(100vh-11rem)]">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-2">
+              <FolderTree className="h-4 w-4" />
+              Jobs
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={onCloseSidebar}
+              aria-label="Close jobs sidebar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </CardTitle>
+          <CardDescription>{statusLabel}</CardDescription>
+        </CardHeader>
+
+        <CardContent className="flex h-[calc(100%-4.4rem)] flex-col gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              className="pl-9"
+              placeholder="Search by path or id"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'queued', 'running', 'completed', 'failed'] as const).map((option) => (
+              <Button
+                key={option}
+                type="button"
+                size="sm"
+                variant={filter === option ? 'default' : 'secondary'}
+                onClick={() => onFilterChange(option)}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+
+          {error && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+
+          <div className="overflow-y-auto rounded-lg border border-slate-200">
+            {loadingJobs ? (
+              <div className="flex items-center gap-2 px-3 py-4 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                Loading jobs...
+              </div>
+            ) : filteredJobs.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-slate-500">No jobs match this filter.</div>
+            ) : (
+              <ul className="divide-y divide-slate-200">
+                {filteredJobs.map((item) => {
+                  const selected = selectedJobId === item.id
+
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        className={cn(
+                          'grid w-full grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 text-left transition-colors',
+                          selected ? 'bg-cyan-50/80' : 'hover:bg-slate-50',
+                        )}
+                        onClick={() => onSelectJob(item)}
+                      >
+                        <div>
+                          <div className="truncate font-medium text-slate-800">{item.rootPath}</div>
+                          <div className="text-xs text-slate-500">{new Date(item.progress.startedAt).toLocaleString()}</div>
+                        </div>
+                        <Badge variant={item.status}>{item.status}</Badge>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </aside>
+  )
+}
