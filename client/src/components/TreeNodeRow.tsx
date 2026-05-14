@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { DirectoryNode } from '../types/scan'
 
@@ -13,9 +13,24 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[exponent]}`
 }
 
-export function TreeNodeRow({ node, depth }: { node: DirectoryNode; depth: number }) {
+interface TreeNodeRowProps {
+  node: DirectoryNode
+  depth: number
+  collapseLevel: number | null
+  collapseSignal: number
+}
+
+export function TreeNodeRow({ node, depth, collapseLevel, collapseSignal }: TreeNodeRowProps) {
   const [collapsed, setCollapsed] = useState(depth > 1)
   const hasChildren = node.children.length > 0
+
+  useEffect(() => {
+    if (collapseLevel === null) {
+      return
+    }
+
+    setCollapsed(depth >= collapseLevel)
+  }, [collapseLevel, collapseSignal, depth])
 
   return (
     <li>
@@ -57,7 +72,13 @@ export function TreeNodeRow({ node, depth }: { node: DirectoryNode; depth: numbe
       {!collapsed && hasChildren && (
         <ul>
           {node.children.map((child) => (
-            <TreeNodeRow key={child.path} node={child} depth={depth + 1} />
+            <TreeNodeRow
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              collapseLevel={collapseLevel}
+              collapseSignal={collapseSignal}
+            />
           ))}
         </ul>
       )}
