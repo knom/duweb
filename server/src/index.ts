@@ -4,6 +4,7 @@ import { existsSync, promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Request } from 'express';
 import { jobStore } from './jobs.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -19,6 +20,14 @@ const api = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.resolve(__dirname, '../../client-dist');
+
+interface ProxyIdentity {
+  username?: string;
+  groups: string[];
+  email?: string;
+  name?: string;
+  uid?: string;
+}
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -36,11 +45,81 @@ function expandHomePath(value: string): string {
   return value;
 }
 
+function readHeader(req: Request, name: string): string | undefined {
+  const value = req.header(name);
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+function parseGroups(rawGroups: string | undefined): string[] {
+  if (!rawGroups) {
+    return [];
+  }
+
+  if (rawGroups.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(rawGroups) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+      }
+    } catch {
+      // Fall back to delimited parsing below.
+    }
+  }
+
+  return rawGroups
+    .split(/[,;]+/)
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+function getProxyIdentity(req: Request): ProxyIdentity {
+  const username =
+    readHeader(req, 'x-forwarded-user') ??
+    readHeader(req, 'x-forwarded-preferred-username') ??
+    readHeader(req, 'x-user');
+  const groupsHeader = readHeader(req, 'x-forwarded-groups') ?? readHeader(req, 'x-groups');
+  const groups = parseGroups(groupsHeader);
+  const email = readHeader(req, 'x-forwarded-email') ?? readHeader(req, 'x-email');
+  const name = readHeader(req, 'x-forwarded-name') ?? readHeader(req, 'x-name');
+  const uid = readHeader(req, 'x-forwarded-sub') ?? readHeader(req, 'x-forwarded-uid') ?? readHeader(req, 'x-uid');
+
+  const identity: ProxyIdentity = { groups };
+  if (username) {
+    identity.username = username;
+  }
+  if (email) {
+    identity.email = email;
+  }
+  if (name) {
+    identity.name = name;
+  }
+  if (uid) {
+    identity.uid = uid;
+  }
+
+  return identity;
+}
+
 app.use(cors());
 app.use(express.json());
 
+api.use((req, res, next) => {
+  res.locals.identity = getProxyIdentity(req);
+  next();
+});
+
 api.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+api.get('/auth/me', (_req, res) => {
+  const identity = res.locals.identity as ProxyIdentity;
+  res.json(identity);
 });
 
 api.post('/jobs/scan', (req, res) => {
