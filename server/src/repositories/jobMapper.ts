@@ -5,7 +5,7 @@ export interface JobRow {
   status: string;
   root_path: string;
   progress_json: string;
-  result_json: string | null;
+  result_json?: string | null;
   error: string | null;
   created_at: string;
   updated_at: string;

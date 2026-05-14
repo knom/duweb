@@ -17,7 +17,8 @@
   "type": "module",
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "redis": "^5.12.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

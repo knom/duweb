@@ -36,7 +36,7 @@ export class SQLiteJobRepository implements JobRepository {
   listJobs(): ScanJob[] {
     const rows = this.db
       .prepare(
-        `SELECT id, status, root_path, progress_json, result_json, error, created_at, updated_at
+        `SELECT id, status, root_path, progress_json, error, created_at, updated_at
          FROM jobs
          ORDER BY datetime(created_at) DESC`,
       )

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Request } from 'express';
 import { jobStore } from './jobs.js';
+import { redisCache } from './cache/redisCache.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const rawBasePath = process.env.BASE_PATH ?? '';
@@ -150,8 +151,8 @@ api.get('/jobs', (_req, res) => {
   res.json(jobStore.listJobs());
 });
 
-api.get('/jobs/:id', (req, res) => {
-  const job = jobStore.getJob(req.params.id);
+api.get('/jobs/:id', async (req, res) => {
+  const job = await jobStore.getJob(req.params.id);
 
   if (!job) {
     res.status(404).json({ error: 'Job not found.' });
@@ -240,11 +241,17 @@ const server = app.listen(PORT, () => {
   console.log(`Disk usage server listening on port ${PORT} with API at ${apiPrefix}`);
 });
 
+// Initialize Redis cache
+await redisCache.connect();
+
 // Keep a strong reference so the process stays alive under tsx/VS Code debug sessions.
 server.ref();
 
 process.on('SIGINT', () => {
-  server.close(() => process.exit(0));
+  server.close(async () => {
+    await redisCache.disconnect();
+    process.exit(0);
+  });
 });
 
 process.on('SIGTERM', () => {

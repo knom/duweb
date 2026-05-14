@@ -24,6 +24,16 @@ function App() {
   const deferredSearch = useDeferredValue(search)
   const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
+  const fetchFullJob = useCallback(async (id: string, signal?: AbortSignal): Promise<ScanJob | null> => {
+    try {
+      const response = await fetch(apiUrl(`/jobs/${id}`), { signal })
+      if (!response.ok) return null
+      return (await response.json()) as ScanJob
+    } catch {
+      return null
+    }
+  }, [])
+
   const fetchPathSuggestions = useCallback(async (query: string, signal?: AbortSignal): Promise<string[]> => {
     const response = await fetch(`${apiUrl('/paths/suggest')}?q=${encodeURIComponent(query)}`, { signal })
     if (!response.ok) {
@@ -65,7 +75,10 @@ function App() {
           return
         }
 
-        setJob(existingJobs[0])
+        const first = await fetchFullJob(existingJobs[0].id)
+        if (!cancelled) {
+          setJob(first)
+        }
       } catch {
         if (!cancelled) {
           setError('Server is not reachable. Start the backend on port 3001.')
@@ -208,7 +221,11 @@ function App() {
 
       setJobs((current) => {
         const updated = current.filter((item) => item.id !== job.id)
-        setJob(updated.length > 0 ? updated[0] : null)
+        if (updated.length > 0) {
+          void fetchFullJob(updated[0].id).then((full) => setJob(full))
+        } else {
+          setJob(null)
+        }
         return updated
       })
     } catch {
@@ -254,7 +271,7 @@ function App() {
             onSearchChange={setSearch}
             onFilterChange={setFilter}
             onSelectJob={(selectedJob) => {
-              setJob(selectedJob)
+              void fetchFullJob(selectedJob.id).then((full) => setJob(full ?? selectedJob))
               setSidebarOpen(false)
             }}
             onRerunSelectedJob={rerunSelectedJob}

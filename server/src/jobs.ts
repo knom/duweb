@@ -3,6 +3,7 @@ import { scanDirectoryTree } from './scanner.js';
 import type { ScanJob } from './types.js';
 import type { JobRepository } from './repositories/jobRepository.js';
 import { createJobRepository } from './repositories/createJobRepository.js';
+import { redisCache } from './cache/redisCache.js';
 
 class JobStore {
   private readonly jobs = new Map<string, ScanJob>();
@@ -37,8 +38,28 @@ class JobStore {
     return created;
   }
 
-  getJob(id: string): ScanJob | undefined {
-    return this.jobs.get(id);
+  async getJob(id: string): Promise<ScanJob | undefined> {
+    const cached = this.jobs.get(id);
+    if (!cached) return undefined;
+
+    // Lazy-load the result tree from Redis/DB on first access for completed jobs
+    if (cached.status === 'completed' && !cached.result) {
+      // Try Redis first
+      let result = await redisCache.getCached(id);
+      if (result) {
+        cached.result = result;
+      } else {
+        // Fall back to DB
+        const full = this.repository.getJob(id);
+        if (full?.result) {
+          cached.result = full.result;
+          // Cache in Redis for future access
+          await redisCache.setCached(id, full.result);
+        }
+      }
+    }
+
+    return cached;
   }
 
   removeJob(id: string): boolean {
@@ -60,9 +81,11 @@ class JobStore {
   }
 
   listJobs(): ScanJob[] {
-    return this.repository.listJobs().sort(
-      (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
-    );
+    return [...this.jobs.values()]
+      .map(({ result: _r, ...rest }) => rest)
+      .sort(
+        (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
+      );
   }
 
   private async runJob(id: string): Promise<void> {
@@ -83,6 +106,10 @@ class JobStore {
     } finally {
       job.progress.endedAt = new Date().toISOString();
       this.repository.saveJob(job);
+      // Cache completed results in Redis
+      if (job.status === 'completed' && job.result) {
+        await redisCache.setCached(job.id, job.result);
+      }
     }
   }
 }
