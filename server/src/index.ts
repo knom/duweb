@@ -1,6 +1,5 @@
 import { jobStore } from './jobs.js';
 import { createApp } from './app.js';
-import { redisCache } from './cache/redisCache.js';
 import { loadConfig } from './config.js';
 
 const config = loadConfig();
@@ -19,19 +18,13 @@ const server = app.listen(config.port, () => {
   `);
 });
 
-// Initialize Redis cache
-console.log('[Init] Initializing Redis cache...');
-await redisCache.connect(config.redisUrl);
-
 // Keep a strong reference so the process stays alive under tsx/VS Code debug sessions.
 server.ref();
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('[Shutdown] Received SIGINT, shutting down gracefully...');
-  server.close(async () => {
-    console.log('[Shutdown] Disconnecting Redis...');
-    await redisCache.disconnect();
+  server.close(() => {
     console.log('[Shutdown] Server stopped');
     process.exit(0);
   });

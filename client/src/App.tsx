@@ -24,7 +24,7 @@ function App() {
   const deferredSearch = useDeferredValue(search)
   const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
-  const fetchFullJob = useCallback(async (id: string, signal?: AbortSignal): Promise<ScanJob | null> => {
+  const fetchJob = useCallback(async (id: string, signal?: AbortSignal): Promise<ScanJob | null> => {
     try {
       const response = await fetch(apiUrl(`/jobs/${id}`), { signal })
       if (!response.ok) return null
@@ -75,7 +75,7 @@ function App() {
           return
         }
 
-        const first = await fetchFullJob(existingJobs[0].id)
+        const first = await fetchJob(existingJobs[0].id)
         if (!cancelled) {
           setJob(first)
         }
@@ -222,7 +222,7 @@ function App() {
       setJobs((current) => {
         const updated = current.filter((item) => item.id !== job.id)
         if (updated.length > 0) {
-          void fetchFullJob(updated[0].id).then((full) => setJob(full))
+              void fetchJob(updated[0].id).then((full) => setJob(full))
         } else {
           setJob(null)
         }
@@ -271,14 +271,14 @@ function App() {
             onSearchChange={setSearch}
             onFilterChange={setFilter}
             onSelectJob={(selectedJob) => {
-              void fetchFullJob(selectedJob.id).then((full) => setJob(full ?? selectedJob))
+              void fetchJob(selectedJob.id).then((full) => setJob(full ?? selectedJob))
               setSidebarOpen(false)
             }}
             onRerunSelectedJob={rerunSelectedJob}
             onRemoveSelectedJob={removeSelectedJob}
           />
 
-          <DirectoryTreeCard job={job} />
+          <DirectoryTreeCard job={job} apiUrl={apiUrl} />
         </div>
       </div>
     </main>

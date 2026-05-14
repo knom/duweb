@@ -28,6 +28,9 @@ vi.mock('../repositories/createJobRepository.js', () => ({
     initialize: vi.fn(),
     listJobs: vi.fn(() => []),
     saveJob: vi.fn(),
+    saveJobTree: vi.fn(),
+    getJobRootNode: vi.fn(),
+    getJobNodeChildren: vi.fn(() => []),
     getJob: vi.fn(),
     deleteJob: vi.fn(() => false),
   }),
@@ -82,7 +85,7 @@ describe('JobStore', () => {
     }
   });
 
-  it('should not include result data in listing', async () => {
+  it('should return jobs without inline tree payload', async () => {
     const module = await import('../jobs.js');
     const store = module.jobStore;
 
@@ -90,7 +93,8 @@ describe('JobStore', () => {
     const jobs = store.listJobs();
 
     const created = jobs.find((j) => j.id === job.id);
-    expect(created?.result).toBeUndefined();
+    expect(created).toBeDefined();
+    expect(created && Object.hasOwn(created, 'result')).toBe(false);
   });
 
   it('should retrieve created jobs', async () => {

@@ -18,11 +18,24 @@ interface TreeNodeRowProps {
   depth: number
   collapseLevel: number | null
   collapseSignal: number
+  getChildren: (parentId: number) => DirectoryNode[] | undefined
+  isChildrenLoading: (parentId: number) => boolean
+  onExpandNode: (node: DirectoryNode) => Promise<void>
 }
 
-export function TreeNodeRow({ node, depth, collapseLevel, collapseSignal }: TreeNodeRowProps) {
+export function TreeNodeRow({
+  node,
+  depth,
+  collapseLevel,
+  collapseSignal,
+  getChildren,
+  isChildrenLoading,
+  onExpandNode,
+}: TreeNodeRowProps) {
   const [collapsed, setCollapsed] = useState(depth > 1)
-  const hasChildren = node.children.length > 0
+  const hasChildren = node.hasChildren
+  const children = getChildren(node.id)
+  const childrenLoading = isChildrenLoading(node.id)
 
   useEffect(() => {
     if (collapseLevel === null) {
@@ -31,6 +44,14 @@ export function TreeNodeRow({ node, depth, collapseLevel, collapseSignal }: Tree
 
     setCollapsed(depth >= collapseLevel)
   }, [collapseLevel, collapseSignal, depth])
+
+  useEffect(() => {
+    if (collapsed || !hasChildren || children !== undefined) {
+      return
+    }
+
+    void onExpandNode(node)
+  }, [children, collapsed, hasChildren, node, onExpandNode])
 
   return (
     <li>
@@ -71,13 +92,17 @@ export function TreeNodeRow({ node, depth, collapseLevel, collapseSignal }: Tree
 
       {!collapsed && hasChildren && (
         <ul>
-          {node.children.map((child) => (
+          {childrenLoading && <li className="px-8 py-2 text-xs text-slate-500">Loading...</li>}
+          {(children ?? []).map((child) => (
             <TreeNodeRow
-              key={child.path}
+              key={child.id}
               node={child}
               depth={depth + 1}
               collapseLevel={collapseLevel}
               collapseSignal={collapseSignal}
+              getChildren={getChildren}
+              isChildrenLoading={isChildrenLoading}
+              onExpandNode={onExpandNode}
             />
           ))}
         </ul>

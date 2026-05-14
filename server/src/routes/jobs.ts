@@ -36,6 +36,54 @@ export function registerJobRoutes(api: Router) {
     res.json(job);
   });
 
+  api.get('/jobs/:id/tree/root', async (req, res) => {
+    const jobId = req.params.id;
+    const job = await jobStore.getJob(jobId);
+
+    if (!job) {
+      res.status(404).json({ error: 'Job not found.' });
+      return;
+    }
+
+    if (job.status !== 'completed') {
+      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+      return;
+    }
+
+    const root = jobStore.getRootNode(jobId);
+    if (!root) {
+      res.status(404).json({ error: 'Root node not found for this job.' });
+      return;
+    }
+
+    res.json({ node: root });
+  });
+
+  api.get('/jobs/:id/tree/nodes/:nodeId/children', async (req, res) => {
+    const jobId = req.params.id;
+    const nodeIdRaw = req.params.nodeId;
+    const parentNodeId = Number.parseInt(nodeIdRaw, 10);
+
+    if (!Number.isFinite(parentNodeId) || parentNodeId <= 0) {
+      res.status(400).json({ error: 'nodeId must be a positive integer.' });
+      return;
+    }
+
+    const job = await jobStore.getJob(jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found.' });
+      return;
+    }
+
+    if (job.status !== 'completed') {
+      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+      return;
+    }
+
+    const children = jobStore.getNodeChildren(jobId, parentNodeId);
+    res.json({ children });
+  });
+
   api.post('/jobs/:id/rerun', (req, res) => {
     const jobId = req.params.id;
     console.log(`[Jobs] Rerunning job: ${jobId}`);

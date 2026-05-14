@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { scanDirectoryTree } from './scanner.js';
-import type { ScanJob } from './types.js';
+import type { ScanJob, StoredDirectoryNode } from './types.js';
 import type { JobRepository } from './repositories/jobRepository.js';
 import { createJobRepository } from './repositories/createJobRepository.js';
-import { redisCache } from './cache/redisCache.js';
 
 class JobStore {
   private readonly jobs = new Map<string, ScanJob>();
@@ -48,28 +47,15 @@ class JobStore {
       return undefined;
     }
 
-    // Lazy-load the result tree from Redis/DB on first access for completed jobs
-    if (cached.status === 'completed' && !cached.result) {
-      console.debug(`[JobStore] Loading result for job ${id}`);
-      // Try Redis first
-      let result = await redisCache.getCached(id);
-      if (result) {
-        console.debug(`[JobStore] Result loaded from Redis cache for job ${id}`);
-        cached.result = result;
-      } else {
-        console.debug(`[JobStore] Result not in Redis, loading from database for job ${id}`);
-        // Fall back to DB
-        const full = this.repository.getJob(id);
-        if (full?.result) {
-          cached.result = full.result;
-          // Cache in Redis for future access
-          await redisCache.setCached(id, full.result);
-          console.debug(`[JobStore] Result loaded from database and cached in Redis for job ${id}`);
-        }
-      }
-    }
-
     return cached;
+  }
+
+  getRootNode(jobId: string): StoredDirectoryNode | undefined {
+    return this.repository.getJobRootNode(jobId);
+  }
+
+  getNodeChildren(jobId: string, parentNodeId: number): StoredDirectoryNode[] {
+    return this.repository.getJobNodeChildren(jobId, parentNodeId);
   }
 
   removeJob(id: string): boolean {
@@ -95,11 +81,9 @@ class JobStore {
   }
 
   listJobs(): ScanJob[] {
-    return [...this.jobs.values()]
-      .map(({ result: _r, ...rest }) => rest)
-      .sort(
-        (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
-      );
+    return [...this.jobs.values()].sort(
+      (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
+    );
   }
 
   private async runJob(id: string): Promise<void> {
@@ -113,7 +97,8 @@ class JobStore {
     console.log(`[JobStore] Job running: ${id} (${job.rootPath})`);
 
     try {
-      job.result = await scanDirectoryTree(job.rootPath, job.progress);
+      const scannedTree = await scanDirectoryTree(job.rootPath, job.progress);
+      this.repository.saveJobTree(job.id, scannedTree);
       job.status = 'completed';
       const duration = job.progress.endedAt
         ? new Date(job.progress.endedAt).getTime() - new Date(job.progress.startedAt).getTime()
@@ -128,10 +113,6 @@ class JobStore {
     } finally {
       job.progress.endedAt = new Date().toISOString();
       this.repository.saveJob(job);
-      // Cache completed results in Redis
-      if (job.status === 'completed' && job.result) {
-        await redisCache.setCached(job.id, job.result);
-      }
     }
   }
 }
