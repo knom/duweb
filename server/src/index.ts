@@ -14,7 +14,7 @@ const server = app.listen(config.port, () => {
    API prefix: ${config.apiPrefix}
    Auth required: ${config.requireAuth ? 'YES' : 'NO '}
    Auth group: ${config.requireAuthGroup ?? '-'}
-   Redis cache: ${config.redisUrl ? 'ENABLED' : 'DISABLED'}
+   Redis URL configured: ${config.redisUrl ? 'YES' : 'NO'}
   `);
 });
 

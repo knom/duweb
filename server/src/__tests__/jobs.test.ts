@@ -16,13 +16,6 @@ vi.mock('../scanner.js', () => ({
   }),
 }));
 
-vi.mock('../cache/redisCache.js', () => ({
-  redisCache: {
-    getCached: vi.fn(async () => null),
-    setCached: vi.fn(async () => {}),
-  },
-}));
-
 vi.mock('../repositories/createJobRepository.js', () => ({
   createJobRepository: () => ({
     initialize: vi.fn(),
