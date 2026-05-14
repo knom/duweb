@@ -40,6 +40,28 @@ app.get('/api/jobs/:id', (req, res) => {
   res.json(job);
 });
 
+app.post('/api/jobs/:id/rerun', (req, res) => {
+  const job = jobStore.rerunJob(req.params.id)
+
+  if (!job) {
+    res.status(404).json({ error: 'Job not found.' })
+    return
+  }
+
+  res.status(202).json(job)
+})
+
+app.delete('/api/jobs/:id', (req, res) => {
+  const removed = jobStore.removeJob(req.params.id)
+
+  if (!removed) {
+    res.status(404).json({ error: 'Job not found.' })
+    return
+  }
+
+  res.status(204).send()
+})
+
 const server = app.listen(PORT, () => {
   console.log(`Disk usage server listening on port ${PORT}`);
 });

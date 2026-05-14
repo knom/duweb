@@ -5,4 +5,5 @@ export interface JobRepository {
   listJobs(): ScanJob[];
   getJob(id: string): ScanJob | undefined;
   saveJob(job: ScanJob): void;
+  deleteJob(id: string): boolean;
 }

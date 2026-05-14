@@ -85,6 +85,11 @@ export class SQLiteJobRepository implements JobRepository {
     );
   }
 
+  deleteJob(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM jobs WHERE id = ?').run(id)
+    return result.changes > 0
+  }
+
   private recoverInterruptedJobs(message: string): void {
     const rows = this.db
       .prepare(

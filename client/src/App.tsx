@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderTree, HardDrive, Menu, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, FolderTree, HardDrive, Menu, Play, Search, Trash2, X } from 'lucide-react'
 import { Badge } from './components/ui/badge'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
@@ -214,6 +214,60 @@ function App() {
     }
   }
 
+  async function rerunSelectedJob() {
+    if (!job) {
+      return
+    }
+
+    setError('')
+
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/rerun`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        setError(payload.error ?? 'Could not rerun selected job.')
+        return
+      }
+
+      const created = (await response.json()) as ScanJob
+      setJob(created)
+      setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
+    } catch {
+      setError('Server is not reachable. Start the backend on port 3001.')
+    }
+  }
+
+  async function removeSelectedJob() {
+    if (!job) {
+      return
+    }
+
+    setError('')
+
+    try {
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json()) as { error?: string }
+        setError(payload.error ?? 'Could not remove selected job.')
+        return
+      }
+
+      setJobs((current) => {
+        const updated = current.filter((item) => item.id !== job.id)
+        setJob(updated.length > 0 ? updated[0] : null)
+        return updated
+      })
+    } catch {
+      setError('Server is not reachable. Start the backend on port 3001.')
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_10%_15%,rgba(14,165,233,0.18),transparent_38%),radial-gradient(circle_at_88%_0%,rgba(16,185,129,0.14),transparent_36%),linear-gradient(170deg,#f5f7fb_0%,#eef3f8_42%,#f8fafc_100%)] text-slate-900">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 p-4 md:p-6">
@@ -246,7 +300,15 @@ function App() {
                 />
               </div>
               <Button type="button" onClick={startScan} disabled={starting || !scanPath.trim()}>
-                {starting ? 'Starting...' : 'Start Scan'}
+                {starting ? 'Starting...' : 'Scan'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={rerunSelectedJob} disabled={!job}>
+                <Play className="h-4 w-4" />
+                Rerun
+              </Button>
+              <Button type="button" variant="secondary" onClick={removeSelectedJob} disabled={!job}>
+                <Trash2 className="h-4 w-4" />
+                Remove
               </Button>
               <Button
                 type="button"

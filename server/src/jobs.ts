@@ -41,6 +41,24 @@ class JobStore {
     return this.jobs.get(id);
   }
 
+  removeJob(id: string): boolean {
+    const removed = this.repository.deleteJob(id)
+    if (removed) {
+      this.jobs.delete(id)
+    }
+
+    return removed
+  }
+
+  rerunJob(id: string): ScanJob | undefined {
+    const source = this.jobs.get(id)
+    if (!source) {
+      return undefined
+    }
+
+    return this.createScanJob(source.rootPath)
+  }
+
   listJobs(): ScanJob[] {
     return this.repository.listJobs().sort(
       (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
