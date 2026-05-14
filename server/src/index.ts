@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { jobStore } from './jobs.js';
 import { redisCache } from './cache/redisCache.js';
-import { createAuthMiddleware, REQUIRE_AUTH } from './middleware/auth.js';
+import { createAuthMiddleware, createUIAuthMiddleware, REQUIRE_AUTH } from './middleware/auth.js';
 import { createLoggingMiddleware } from './middleware/logging.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerJobRoutes } from './routes/jobs.js';
@@ -40,9 +40,12 @@ registerPathRoutes(api);
 
 app.use(apiPrefix, api);
 
-// Static UI serving
+// Static UI serving with auth middleware
 if (existsSync(clientDistPath)) {
   const uiMountPath = normalizedBasePath || '/';
+  
+  // Apply UI auth middleware before serving static files
+  app.use(uiMountPath, createUIAuthMiddleware());
   app.use(uiMountPath, express.static(clientDistPath));
 
   const uiMatcher =

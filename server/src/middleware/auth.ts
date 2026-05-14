@@ -9,6 +9,7 @@ export interface ProxyIdentity {
 }
 
 export const REQUIRE_AUTH = process.env.REQUIRE_AUTH === 'true';
+export const REQUIRE_AUTH_GROUP = process.env.REQUIRE_AUTH_GROUP;
 
 export const authHeaders = {
   username: process.env.AUTH_HEADER_USERNAME ?? 'x-forwarded-user',
@@ -75,19 +76,62 @@ export function getProxyIdentity(req: Request): ProxyIdentity {
   return identity;
 }
 
+function hasRequiredGroup(identity: ProxyIdentity): boolean {
+  if (!REQUIRE_AUTH_GROUP) {
+    return true;
+  }
+  return identity.groups.includes(REQUIRE_AUTH_GROUP);
+}
+
 export function createAuthMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     const identity = getProxyIdentity(req);
     res.locals.identity = identity;
 
-    if (REQUIRE_AUTH && (!identity.username || identity.groups.length === 0)) {
+    // Allow health and auth/me endpoints without authentication
+    if (req.path === '/health' || req.path === '/auth/me') {
+      if (identity.username) {
+        console.debug(`[Auth] Authenticated: ${identity.username} (groups: ${identity.groups.join(', ') || 'none'})`);
+      }
+      next();
+      return;
+    }
+
+    if (REQUIRE_AUTH && !identity.username) {
       console.warn(`[Auth] Rejected unauthenticated request from ${req.ip} to ${req.method} ${req.path}`);
       res.status(401).json({ error: 'Authentication required.' });
       return;
     }
 
+    if (REQUIRE_AUTH && !hasRequiredGroup(identity)) {
+      console.warn(`[Auth] Rejected request from ${req.ip} to ${req.method} ${req.path}: user ${identity.username} not in required group '${REQUIRE_AUTH_GROUP}'`);
+      res.status(403).json({ error: `Access requires membership in group '${REQUIRE_AUTH_GROUP}'.` });
+      return;
+    }
+
     if (identity.username) {
       console.debug(`[Auth] Authenticated: ${identity.username} (groups: ${identity.groups.join(', ') || 'none'})`);
+    }
+
+    next();
+  };
+}
+
+export function createUIAuthMiddleware() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const identity = getProxyIdentity(req);
+    res.locals.identity = identity;
+
+    if (REQUIRE_AUTH && (!identity.username || identity.groups.length === 0)) {
+      console.warn(`[Auth] Blocked unauthorized UI access from ${req.ip}`);
+      res.status(401).json({ error: 'Authentication required.' });
+      return;
+    }
+
+    if (REQUIRE_AUTH && !hasRequiredGroup(identity)) {
+      console.warn(`[Auth] Blocked UI access from ${req.ip}: user ${identity.username} not in required group '${REQUIRE_AUTH_GROUP}'`);
+      res.status(403).json({ error: `Access requires membership in group '${REQUIRE_AUTH_GROUP}'.` });
+      return;
     }
 
     next();
