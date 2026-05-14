@@ -33,6 +33,13 @@ interface ScanJob {
   error?: string
 }
 
+const API_BASE = `${import.meta.env.BASE_URL}api`
+
+function apiUrl(path: string): string {
+  const suffix = path.startsWith('/') ? path : `/${path}`
+  return `${API_BASE}${suffix}`
+}
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) {
     return '0 B'
@@ -112,7 +119,7 @@ function App() {
 
     async function loadJobs() {
       try {
-        const response = await fetch('/api/jobs')
+        const response = await fetch(apiUrl('/jobs'))
         if (!response.ok) {
           return
         }
@@ -150,7 +157,7 @@ function App() {
     }
 
     const timer = window.setInterval(async () => {
-      const response = await fetch(`/api/jobs/${job.id}`)
+      const response = await fetch(apiUrl(`/jobs/${job.id}`))
       if (!response.ok) {
         setError('Unable to refresh job state.')
         return
@@ -192,7 +199,7 @@ function App() {
     setError('')
 
     try {
-      const response = await fetch('/api/jobs/scan', {
+      const response = await fetch(apiUrl('/jobs/scan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: scanPath }),
@@ -222,7 +229,7 @@ function App() {
     setError('')
 
     try {
-      const response = await fetch(`/api/jobs/${job.id}/rerun`, {
+      const response = await fetch(apiUrl(`/jobs/${job.id}/rerun`), {
         method: 'POST',
       })
 
@@ -248,7 +255,7 @@ function App() {
     setError('')
 
     try {
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await fetch(apiUrl(`/jobs/${job.id}`), {
         method: 'DELETE',
       })
 
