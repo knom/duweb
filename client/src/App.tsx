@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, FolderTree, HardDrive, Menu, Play, Search, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, FolderTree, Menu, Play, Search, Trash2, X } from 'lucide-react'
 import { Badge } from './components/ui/badge'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card'
@@ -113,6 +113,7 @@ function App() {
   const [starting, setStarting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
+  const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
   useEffect(() => {
     let cancelled = false
@@ -281,14 +282,10 @@ function App() {
         <header className="sticky top-3 z-30 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                <HardDrive className="h-3.5 w-3.5" />
-                Disk Scope
-              </div>
-              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Disk Usage Explorer</h1>
-              <p className="text-sm text-slate-500">
-                Tailwind + reusable UI components with async scan jobs and collapsible tree browsing.
-              </p>
+              <h1 className="flex items-center gap-3 text-xl font-semibold tracking-tight md:text-2xl">
+                <img src={logoUrl} alt="DiskUsage Web logo" className="h-8 w-8 md:h-10 md:w-10" />
+                <span>Disk Usage Web</span>
+              </h1>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
