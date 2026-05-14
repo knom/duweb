@@ -282,7 +282,17 @@ function App() {
         <header className="sticky top-3 z-30 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">
-              <h1 className="flex items-center gap-3 text-xl font-semibold tracking-tight md:text-2xl">
+              <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight md:gap-3 md:text-2xl">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-8 p-0 lg:hidden"
+                  onClick={() => setSidebarOpen((value) => !value)}
+                  aria-label={sidebarOpen ? 'Close jobs sidebar' : 'Open jobs sidebar'}
+                >
+                  {sidebarOpen ? <X className="h-3.5 w-3.5" /> : <Menu className="h-3.5 w-3.5" />}
+                </Button>
                 <img src={logoUrl} alt="DiskUsage Web logo" className="h-8 w-8 md:h-10 md:w-10" />
                 <span>Disk Usage Web</span>
               </h1>
@@ -333,17 +343,6 @@ function App() {
                   Remove
                 </Button>
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen((value) => !value)}
-                aria-label={sidebarOpen ? 'Close jobs sidebar' : 'Open jobs sidebar'}
-              >
-                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                Jobs
-              </Button>
             </div>
           </div>
         </header>
