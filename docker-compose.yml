@@ -1,0 +1,24 @@
+services:
+  duweb:
+    image: knom/duweb:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_PATH: /duweb
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      BASE_PATH: /duweb
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/:/app/server/data
+      - /mnt/files/:/mnt/files/
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/duweb/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
