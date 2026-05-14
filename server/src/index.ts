@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
-import { existsSync } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { jobStore } from './jobs.js';
@@ -21,6 +22,18 @@ const clientDistPath = path.resolve(__dirname, '../../client-dist');
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function expandHomePath(value: string): string {
+  if (value === '~') {
+    return os.homedir();
+  }
+
+  if (value.startsWith(`~${path.sep}`)) {
+    return path.join(os.homedir(), value.slice(2));
+  }
+
+  return value;
 }
 
 app.use(cors());
@@ -55,6 +68,43 @@ api.get('/jobs/:id', (req, res) => {
   }
 
   res.json(job);
+});
+
+api.get('/paths/suggest', async (req, res) => {
+  const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const expanded = expandHomePath(query);
+
+  let baseDir = expanded;
+  let fragment = '';
+
+  if (!expanded) {
+    baseDir = path.parse(process.cwd()).root || '/';
+  } else if (expanded.endsWith(path.sep)) {
+    baseDir = expanded;
+  } else {
+    baseDir = path.dirname(expanded);
+    fragment = path.basename(expanded);
+  }
+
+  if (!path.isAbsolute(baseDir)) {
+    baseDir = path.resolve(baseDir);
+  }
+
+  try {
+    const entries = await fs.readdir(baseDir, { withFileTypes: true });
+    const search = fragment.toLowerCase();
+    const suggestions = entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => name.toLowerCase().startsWith(search))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, 20)
+      .map((name) => path.join(baseDir, name));
+
+    res.json({ suggestions });
+  } catch {
+    res.json({ suggestions: [] as string[] });
+  }
 });
 
 api.post('/jobs/:id/rerun', (req, res) => {

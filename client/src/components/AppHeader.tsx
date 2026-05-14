@@ -1,4 +1,5 @@
-import { Menu, Play, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Loader2, Menu, Play, Trash2, X } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 
@@ -10,6 +11,7 @@ interface AppHeaderProps {
   hasSelectedJob: boolean
   onToggleSidebar: () => void
   onScanPathChange: (value: string) => void
+  fetchPathSuggestions: (query: string, signal?: AbortSignal) => Promise<string[]>
   onStartScan: () => void
   onRerunSelectedJob: () => void
   onRemoveSelectedJob: () => void
@@ -23,10 +25,66 @@ export function AppHeader({
   hasSelectedJob,
   onToggleSidebar,
   onScanPathChange,
+  fetchPathSuggestions,
   onStartScan,
   onRerunSelectedJob,
   onRemoveSelectedJob,
 }: AppHeaderProps) {
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [pathSuggestions, setPathSuggestions] = useState<string[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
+
+  const shouldShowDropdown = showSuggestions && (loadingSuggestions || pathSuggestions.length > 0)
+
+  useEffect(() => {
+    if (!showSuggestions) {
+      setLoadingSuggestions(false)
+      setPathSuggestions([])
+      setActiveSuggestionIndex(-1)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      try {
+        setLoadingSuggestions(true)
+        const suggestions = await fetchPathSuggestions(scanPath, controller.signal)
+        setPathSuggestions(suggestions)
+        setActiveSuggestionIndex(suggestions.length > 0 ? 0 : -1)
+      } catch {
+        if (!controller.signal.aborted) {
+          setPathSuggestions([])
+          setActiveSuggestionIndex(-1)
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingSuggestions(false)
+        }
+      }
+    }, 150)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [fetchPathSuggestions, scanPath, showSuggestions])
+
+  const activeSuggestion = useMemo(() => {
+    if (activeSuggestionIndex < 0 || activeSuggestionIndex >= pathSuggestions.length) {
+      return null
+    }
+
+    return pathSuggestions[activeSuggestionIndex]
+  }, [activeSuggestionIndex, pathSuggestions])
+
+  function applySuggestion(value: string): void {
+    onScanPathChange(value)
+    setShowSuggestions(false)
+    setPathSuggestions([])
+    setActiveSuggestionIndex(-1)
+  }
+
   return (
     <header className="sticky top-3 z-30 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -48,7 +106,7 @@ export function AppHeader({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="w-full sm:w-[360px]">
+          <div className="relative w-full sm:w-[360px]">
             <label htmlFor="scan-path" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               Scan path
             </label>
@@ -56,8 +114,71 @@ export function AppHeader({
               id="scan-path"
               value={scanPath}
               onChange={(event) => onScanPathChange(event.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => {
+                window.setTimeout(() => {
+                  setShowSuggestions(false)
+                }, 120)
+              }}
+              onKeyDown={(event) => {
+                if (!shouldShowDropdown) {
+                  return
+                }
+
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault()
+                  setActiveSuggestionIndex((index) => Math.min(index + 1, pathSuggestions.length - 1))
+                  return
+                }
+
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault()
+                  setActiveSuggestionIndex((index) => Math.max(index - 1, 0))
+                  return
+                }
+
+                if (event.key === 'Enter' && activeSuggestion) {
+                  event.preventDefault()
+                  applySuggestion(activeSuggestion)
+                  return
+                }
+
+                if (event.key === 'Escape') {
+                  setShowSuggestions(false)
+                }
+              }}
               placeholder="/home"
             />
+
+            {shouldShowDropdown && (
+              <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg">
+                {loadingSuggestions ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    Finding paths...
+                  </div>
+                ) : (
+                  <ul className="max-h-56 overflow-auto py-1">
+                    {pathSuggestions.map((suggestion, index) => (
+                      <li key={suggestion}>
+                        <button
+                          type="button"
+                          className={`w-full px-3 py-2 text-left text-sm ${
+                            index === activeSuggestionIndex ? 'bg-cyan-50 text-cyan-900' : 'text-slate-700 hover:bg-slate-50'
+                          }`}
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                          }}
+                          onClick={() => applySuggestion(suggestion)}
+                        >
+                          {suggestion}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
             <Button type="button" className="w-full sm:w-auto" onClick={onStartScan} disabled={starting || !scanPath.trim()}>

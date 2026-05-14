@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { DirectoryTreeCard } from './components/DirectoryTreeCard'
 import { JobsSidebar } from './components/JobsSidebar'
@@ -23,6 +23,20 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const deferredSearch = useDeferredValue(search)
   const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
+
+  const fetchPathSuggestions = useCallback(async (query: string, signal?: AbortSignal): Promise<string[]> => {
+    const response = await fetch(`${apiUrl('/paths/suggest')}?q=${encodeURIComponent(query)}`, { signal })
+    if (!response.ok) {
+      return []
+    }
+
+    const payload = (await response.json()) as { suggestions?: unknown }
+    if (!Array.isArray(payload.suggestions)) {
+      return []
+    }
+
+    return payload.suggestions.filter((item): item is string => typeof item === 'string')
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -213,6 +227,7 @@ function App() {
           hasSelectedJob={Boolean(job)}
           onToggleSidebar={() => setSidebarOpen((value) => !value)}
           onScanPathChange={setScanPath}
+          fetchPathSuggestions={fetchPathSuggestions}
           onStartScan={startScan}
           onRerunSelectedJob={rerunSelectedJob}
           onRemoveSelectedJob={removeSelectedJob}
