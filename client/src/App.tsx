@@ -78,8 +78,47 @@ function TreeNodeRow({ node, depth }: { node: DirectoryNode; depth: number }) {
 function App() {
   const [scanPath, setScanPath] = useState('/')
   const [job, setJob] = useState<ScanJob | null>(null)
+  const [jobs, setJobs] = useState<ScanJob[]>([])
   const [error, setError] = useState<string>('')
   const [starting, setStarting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadJobs() {
+      try {
+        const response = await fetch('/api/jobs')
+        if (!response.ok) {
+          return
+        }
+
+        const existingJobs = (await response.json()) as ScanJob[]
+
+        if (cancelled) {
+          return
+        }
+
+        setJobs(existingJobs)
+
+        if (existingJobs.length === 0) {
+          return
+        }
+
+        const newestJob = existingJobs[0]
+        setJob(newestJob)
+      } catch {
+        if (!cancelled) {
+          setError('Server is not reachable. Start the backend on port 3001.')
+        }
+      }
+    }
+
+    void loadJobs()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!job || (job.status !== 'queued' && job.status !== 'running')) {
@@ -95,6 +134,7 @@ function App() {
 
       const updated = (await response.json()) as ScanJob
       setJob(updated)
+      setJobs((current) => current.map((item) => (item.id === updated.id ? updated : item)))
     }, 1200)
 
     return () => {
@@ -128,6 +168,7 @@ function App() {
 
       const created = (await response.json()) as ScanJob
       setJob(created)
+      setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
       setError('Server is not reachable. Start the backend on port 3001.')
     } finally {
@@ -158,16 +199,42 @@ function App() {
       </section>
 
       <section className="panel status">
-        <h2>Job Status</h2>
-        <p>{statusLabel}</p>
+        <h2>Jobs</h2>
         {job?.error && <p className="error">{job.error}</p>}
         {error && <p className="error">{error}</p>}
-        {job && (
-          <div className="meta">
-            <span>Job: {job.id}</span>
-            <span>Root: {job.rootPath}</span>
-            <span>Started: {new Date(job.progress.startedAt).toLocaleString()}</span>
-          </div>
+        {jobs.length === 0 ? (
+          <p className="empty">No jobs found on the server yet.</p>
+        ) : (
+          <ul className="job-list">
+            {jobs.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={`job-link${job?.id === item.id ? ' is-active' : ''}`}
+                  onClick={() => setJob(item)}
+                >
+                  <span className={`job-disclosure${job?.id === item.id ? ' is-open' : ''}`} aria-hidden="true">
+                    ›
+                  </span>
+                  <span className="job-main">
+                    <strong>{item.rootPath}</strong>
+                    <span>{new Date(item.progress.startedAt).toLocaleString()}</span>
+                  </span>
+                  <strong>{item.status}</strong>
+                </button>
+                {job?.id === item.id && (
+                  <div className="job-details">
+                    <span>{statusLabel}</span>
+                    <div className="meta">
+                      <span>Job: {item.id}</span>
+                      <span>Root: {item.rootPath}</span>
+                      <span>Started: {new Date(item.progress.startedAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 
