@@ -433,6 +433,7 @@ function App() {
                             )}
                             onClick={() => {
                               setJob(item)
+                              setScanPath(item.rootPath)
                               setSidebarOpen(false)
                             }}
                           >
