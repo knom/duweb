@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -15,6 +15,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
   const [childrenByParent, setChildrenByParent] = useState<Record<number, DirectoryNode[]>>({})
   const [loadingParents, setLoadingParents] = useState<Record<number, boolean>>({})
   const [treeUnavailable, setTreeUnavailable] = useState(false)
+  const requestedParentsRef = useRef<Set<number>>(new Set())
   const [selectedLevel, setSelectedLevel] = useState(1)
   const [collapseLevel, setCollapseLevel] = useState<number | null>(null)
   const [collapseSignal, setCollapseSignal] = useState(0)
@@ -27,6 +28,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       setChildrenByParent({})
       setLoadingParents({})
       setTreeUnavailable(false)
+      requestedParentsRef.current = new Set()
 
       if (!job || job.status !== 'completed') {
         return
@@ -60,6 +62,60 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
     }
   }, [apiUrl, job?.id, job?.status])
 
+  useEffect(() => {
+    if (!job || job.status !== 'completed' || !rootNode) {
+      return
+    }
+
+    const jobId = job.id
+
+    let cancelled = false
+    const queue: DirectoryNode[] = [rootNode]
+
+    async function prefetchTree(): Promise<void> {
+      while (!cancelled && queue.length > 0) {
+        const current = queue.shift()
+        if (!current || !current.hasChildren) {
+          continue
+        }
+
+        if (requestedParentsRef.current.has(current.id)) {
+          continue
+        }
+
+        requestedParentsRef.current.add(current.id)
+        setLoadingParents((state) => ({ ...state, [current.id]: true }))
+
+        try {
+          const response = await fetch(apiUrl(`/jobs/${jobId}/tree/nodes/${current.id}/children`))
+          const payload = response.ok ? ((await response.json()) as { children?: DirectoryNode[] }) : undefined
+          const children = Array.isArray(payload?.children) ? payload.children : []
+
+          if (cancelled) {
+            return
+          }
+
+          setChildrenByParent((state) => ({ ...state, [current.id]: children }))
+          for (const child of children) {
+            if (child.hasChildren) {
+              queue.push(child)
+            }
+          }
+        } finally {
+          if (!cancelled) {
+            setLoadingParents((state) => ({ ...state, [current.id]: false }))
+          }
+        }
+      }
+    }
+
+    void prefetchTree()
+
+    return () => {
+      cancelled = true
+    }
+  }, [apiUrl, job?.id, job?.status, rootNode])
+
   const maxDepth = useMemo(() => {
     if (!rootNode) {
       return 0
@@ -92,11 +148,21 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       return
     }
 
+    if (requestedParentsRef.current.has(node.id)) {
+      return
+    }
+
+    requestedParentsRef.current.add(node.id)
+
     setLoadingParents((current) => ({ ...current, [node.id]: true }))
 
     try {
       const response = await fetch(apiUrl(`/jobs/${job.id}/tree/nodes/${node.id}/children`))
       if (!response.ok) {
+        setChildrenByParent((current) => ({
+          ...current,
+          [node.id]: [],
+        }))
         return
       }
 

@@ -45,13 +45,14 @@ export function TreeNodeRow({
     setCollapsed(depth >= collapseLevel)
   }, [collapseLevel, collapseSignal, depth])
 
-  useEffect(() => {
-    if (collapsed || !hasChildren || children !== undefined) {
-      return
-    }
+  function toggleCollapsed(): void {
+    const nextCollapsed = !collapsed
+    setCollapsed(nextCollapsed)
 
-    void onExpandNode(node)
-  }, [children, collapsed, hasChildren, node, onExpandNode])
+    if (!nextCollapsed && hasChildren && children === undefined) {
+      void onExpandNode(node)
+    }
+  }
 
   return (
     <li>
@@ -62,7 +63,7 @@ export function TreeNodeRow({
         <button
           type="button"
           className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-40"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={toggleCollapsed}
           disabled={!hasChildren}
           aria-label={collapsed ? 'Expand directory' : 'Collapse directory'}
         >
