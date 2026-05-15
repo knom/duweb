@@ -14,6 +14,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
   const [rootNode, setRootNode] = useState<DirectoryNode | null>(null)
   const [childrenByParent, setChildrenByParent] = useState<Record<number, DirectoryNode[]>>({})
   const [loadingParents, setLoadingParents] = useState<Record<number, boolean>>({})
+  const [treeUnavailable, setTreeUnavailable] = useState(false)
   const [selectedLevel, setSelectedLevel] = useState(1)
   const [collapseLevel, setCollapseLevel] = useState<number | null>(null)
   const [collapseSignal, setCollapseSignal] = useState(0)
@@ -25,6 +26,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       setRootNode(null)
       setChildrenByParent({})
       setLoadingParents({})
+      setTreeUnavailable(false)
 
       if (!job || job.status !== 'completed') {
         return
@@ -33,6 +35,9 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       try {
         const response = await fetch(apiUrl(`/jobs/${job.id}/tree/root`))
         if (!response.ok) {
+          if (!cancelled && response.status === 404) {
+            setTreeUnavailable(true)
+          }
           return
         }
 
@@ -43,6 +48,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       } catch {
         if (!cancelled) {
           setRootNode(null)
+          setTreeUnavailable(false)
         }
       }
     }
@@ -143,7 +149,11 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
 
       <CardContent className="flex-1 overflow-auto p-0">
         {!rootNode ? (
-          <div className="px-4 py-6 text-sm text-slate-500">Select a scan to view the disk usage.</div>
+          <div className="px-4 py-6 text-sm text-slate-500">
+            {treeUnavailable
+              ? 'This completed job has no stored tree details. Rerun the scan to generate node data.'
+              : 'Select a scan to view the disk usage.'}
+          </div>
         ) : (
           <ul className="px-2 py-2">
             <TreeNodeRow

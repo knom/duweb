@@ -29,21 +29,42 @@ async function mockInitialJobs(page: Page) {
         startedAt: '2026-05-14T10:00:00.000Z',
         endedAt: '2026-05-14T10:00:03.000Z',
       },
-      result: {
+    })
+  })
+
+  await page.route('**/api/jobs/job-1/tree/root', async (route) => {
+    await fulfillJson(route, {
+      node: {
+        id: 10,
+        parentId: null,
+        jobId: 'job-1',
+        depth: 0,
         name: 'files',
         path: '/mnt/files',
         sizeBytes: 1024,
         percentOfRoot: 100,
-        children: [
-          {
-            name: 'docker-compose-services',
-            path: '/mnt/files/docker-compose-services',
-            sizeBytes: 512,
-            percentOfRoot: 50,
-            children: [],
-          },
-        ],
+        inaccessible: false,
+        hasChildren: true,
       },
+    })
+  })
+
+  await page.route('**/api/jobs/job-1/tree/nodes/10/children', async (route) => {
+    await fulfillJson(route, {
+      children: [
+        {
+          id: 11,
+          parentId: 10,
+          jobId: 'job-1',
+          depth: 1,
+          name: 'docker-compose-services',
+          path: '/mnt/files/docker-compose-services',
+          sizeBytes: 512,
+          percentOfRoot: 50,
+          inaccessible: false,
+          hasChildren: false,
+        },
+      ],
     })
   })
 }
