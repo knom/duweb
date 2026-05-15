@@ -27,7 +27,6 @@ test('selects job and removes selected job', async ({ page }) => {
       status: 'completed',
       rootPath: '/mnt/files',
       progress: { directoriesVisited: 2, filesVisited: 3, startedAt: '2026-05-14T10:00:00.000Z' },
-      result: { name: 'files', path: '/mnt/files', sizeBytes: 1, percentOfRoot: 100, children: [] },
     })
   })
 
@@ -97,6 +96,46 @@ test('rerun selected job creates a new queued job', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Rerun' }).click()
 
-  await expect(page.getByText('QUEUED - dirs 0, files 0')).toBeVisible()
+  await expect(page.locator('.border-amber-200').first()).toHaveText('queued')
   await expect(page.getByLabel('Scan path')).toHaveValue('/var/log')
+})
+
+test('search filters by path only and ignores job id', async ({ page }) => {
+  await page.route('**/api/jobs', async (route) => {
+    await fulfillJson(route, [
+      {
+        id: 'job-alpha-123',
+        status: 'completed',
+        rootPath: '/mnt/files',
+        progress: { directoriesVisited: 2, filesVisited: 3, startedAt: '2026-05-14T10:00:00.000Z' },
+      },
+      {
+        id: 'job-beta-456',
+        status: 'failed',
+        rootPath: '/var/log',
+        progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T11:00:00.000Z' },
+      },
+    ])
+  })
+
+  await page.route('**/api/jobs/job-alpha-123', async (route) => {
+    await fulfillJson(route, {
+      id: 'job-alpha-123',
+      status: 'completed',
+      rootPath: '/mnt/files',
+      progress: { directoriesVisited: 2, filesVisited: 3, startedAt: '2026-05-14T10:00:00.000Z' },
+    })
+  })
+
+  await mockNoSuggestions(page)
+  await page.goto('/')
+
+  const searchInput = page.getByPlaceholder('Search by path')
+
+  await searchInput.fill('job-alpha-123')
+  await expect(page.getByText('No jobs match this filter.')).toBeVisible()
+
+  await searchInput.fill('/var')
+  await expect(page.getByRole('button', { name: '/var/log' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '/mnt/files' })).toHaveCount(0)
 })

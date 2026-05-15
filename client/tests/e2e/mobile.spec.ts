@@ -21,7 +21,6 @@ test('mobile sidebar opens from hamburger and closes via overlay/select', async 
       status: 'completed',
       rootPath: '/mnt/files',
       progress: { directoriesVisited: 1, filesVisited: 2, startedAt: '2026-05-14T10:00:00.000Z' },
-      result: { name: 'files', path: '/mnt/files', sizeBytes: 1, percentOfRoot: 100, children: [] },
     })
   })
 
@@ -30,12 +29,13 @@ test('mobile sidebar opens from hamburger and closes via overlay/select', async 
 
   const openBtn = page.getByRole('button', { name: 'Open jobs sidebar' })
   await openBtn.click()
-  await expect(page.getByRole('button', { name: 'Close sidebar overlay' })).toBeVisible()
+  const overlay = page.getByRole('button', { name: 'Close sidebar overlay' })
+  await expect(overlay).toBeVisible()
 
-  await page.getByRole('button', { name: 'Close sidebar overlay' }).click()
-  await expect(page.getByRole('button', { name: 'Close sidebar overlay' })).toHaveCount(0)
+  await page.mouse.click(385, 120)
+  await expect(overlay).toHaveCount(0)
 
   await openBtn.click()
   await page.getByRole('button', { name: '/mnt/files' }).click()
-  await expect(page.getByRole('button', { name: 'Close sidebar overlay' })).toHaveCount(0)
+  await expect(overlay).toHaveCount(0)
 })

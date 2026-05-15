@@ -19,29 +19,61 @@ test('shows level options based on tree depth and supports collapse interaction'
       status: 'completed',
       rootPath: '/mnt/files',
       progress: { directoriesVisited: 4, filesVisited: 6, startedAt: '2026-05-14T10:00:00.000Z' },
-      result: {
+    })
+  })
+
+  await page.route('**/api/jobs/job-tree/tree/root', async (route) => {
+    await fulfillJson(route, {
+      node: {
+        id: 1,
+        parentId: null,
+        jobId: 'job-tree',
+        depth: 0,
         name: 'files',
         path: '/mnt/files',
         sizeBytes: 100,
         percentOfRoot: 100,
-        children: [
-          {
-            name: 'alpha',
-            path: '/mnt/files/alpha',
-            sizeBytes: 70,
-            percentOfRoot: 70,
-            children: [
-              {
-                name: 'beta',
-                path: '/mnt/files/alpha/beta',
-                sizeBytes: 20,
-                percentOfRoot: 20,
-                children: [],
-              },
-            ],
-          },
-        ],
+        inaccessible: false,
+        hasChildren: true,
       },
+    })
+  })
+
+  await page.route('**/api/jobs/job-tree/tree/nodes/1/children', async (route) => {
+    await fulfillJson(route, {
+      children: [
+        {
+          id: 2,
+          parentId: 1,
+          jobId: 'job-tree',
+          depth: 1,
+          name: 'alpha',
+          path: '/mnt/files/alpha',
+          sizeBytes: 70,
+          percentOfRoot: 70,
+          inaccessible: false,
+          hasChildren: true,
+        },
+      ],
+    })
+  })
+
+  await page.route('**/api/jobs/job-tree/tree/nodes/2/children', async (route) => {
+    await fulfillJson(route, {
+      children: [
+        {
+          id: 3,
+          parentId: 2,
+          jobId: 'job-tree',
+          depth: 2,
+          name: 'beta',
+          path: '/mnt/files/alpha/beta',
+          sizeBytes: 20,
+          percentOfRoot: 20,
+          inaccessible: false,
+          hasChildren: false,
+        },
+      ],
     })
   })
 

@@ -47,12 +47,22 @@ test('scan starts, polls, and finishes with completed status', async ({ page }) 
         startedAt: '2026-05-14T10:00:00.000Z',
         endedAt: '2026-05-14T10:00:02.000Z',
       },
-      result: {
+    })
+  })
+
+  await page.route('**/api/jobs/job-new/tree/root', async (route) => {
+    await fulfillJson(route, {
+      node: {
+        id: 20,
+        parentId: null,
+        jobId: 'job-new',
+        depth: 0,
         name: 'files',
         path: '/mnt/files',
         sizeBytes: 500,
         percentOfRoot: 100,
-        children: [],
+        inaccessible: false,
+        hasChildren: false,
       },
     })
   })
@@ -61,6 +71,7 @@ test('scan starts, polls, and finishes with completed status', async ({ page }) 
   await page.getByLabel('Scan path').fill('/mnt/files')
   await page.getByRole('button', { name: 'Scan' }).click()
 
-  await expect(page.getByText('QUEUED - dirs 0, files 0')).toBeVisible()
-  await expect(page.getByText('COMPLETED - dirs 4, files 10')).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.border-amber-200').first()).toHaveText('queued')
+  await expect(page.getByText('Root /mnt/files · 4 directories · 10 files')).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('.border-emerald-200').first()).toHaveText('completed')
 })
