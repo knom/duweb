@@ -1,4 +1,3 @@
-import { jobStore } from './jobs.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 

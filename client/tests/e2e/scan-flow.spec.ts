@@ -72,6 +72,6 @@ test('scan starts, polls, and finishes with completed status', async ({ page }) 
   await page.getByRole('button', { name: 'Scan' }).click()
 
   await expect(page.locator('.border-amber-200').first()).toHaveText('queued')
-  await expect(page.getByText('Root /mnt/files · 4 directories · 10 files')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText(/^4 directories · 10 files/)).toBeVisible({ timeout: 10_000 })
   await expect(page.locator('.border-emerald-200').first()).toHaveText('completed')
 })

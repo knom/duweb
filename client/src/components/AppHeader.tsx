@@ -32,11 +32,15 @@ export function AppHeader({
 
   const shouldShowDropdown = showSuggestions && (loadingSuggestions || pathSuggestions.length > 0)
 
+  function closeSuggestions(): void {
+    setShowSuggestions(false)
+    setLoadingSuggestions(false)
+    setPathSuggestions([])
+    setActiveSuggestionIndex(-1)
+  }
+
   useEffect(() => {
     if (!showSuggestions) {
-      setLoadingSuggestions(false)
-      setPathSuggestions([])
-      setActiveSuggestionIndex(-1)
       return
     }
 
@@ -115,7 +119,7 @@ export function AppHeader({
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => {
                 window.setTimeout(() => {
-                  setShowSuggestions(false)
+                  closeSuggestions()
                 }, 120)
               }}
               onKeyDown={(event) => {
@@ -142,7 +146,7 @@ export function AppHeader({
                 }
 
                 if (event.key === 'Escape') {
-                  setShowSuggestions(false)
+                  closeSuggestions()
                 }
               }}
               placeholder="/home"

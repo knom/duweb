@@ -217,19 +217,20 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
   }, [childrenByParent, rootNode])
 
   const levelOptions = useMemo(() => Array.from({ length: maxDepth }, (_, index) => index + 1), [maxDepth])
+  const maxLevel = levelOptions[levelOptions.length - 1] ?? 1
+  const selectedLevelValue = Math.min(selectedLevel, maxLevel)
 
-  useEffect(() => {
-    if (levelOptions.length === 0) {
-      return
-    }
-
-    setSelectedLevel((current) => Math.min(current, levelOptions[levelOptions.length - 1]))
-  }, [levelOptions])
+  const updateSelectedLevel = useCallback(
+    (level: number): void => {
+      setSelectedLevel(Math.max(1, Math.min(level, maxLevel)))
+    },
+    [maxLevel],
+  )
 
   const applyCollapse = useCallback((): void => {
-    setCollapseLevel(selectedLevel)
+    setCollapseLevel(selectedLevelValue)
     setCollapseSignal((value) => value + 1)
-  }, [selectedLevel])
+  }, [selectedLevelValue])
 
   const ensureChildrenLoaded = useCallback(
     async (node: DirectoryNode): Promise<void> => {
@@ -267,8 +268,8 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
     treeUnavailable,
     isPostLoading,
     levelOptions,
-    selectedLevel,
-    setSelectedLevel,
+    selectedLevel: selectedLevelValue,
+    setSelectedLevel: updateSelectedLevel,
     collapseLevel,
     collapseSignal,
     applyCollapse,

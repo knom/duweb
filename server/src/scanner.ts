@@ -19,9 +19,8 @@ async function readEntries(dirPath: string): Promise<Dirent[] | null> {
 async function walkDirectory(dirPath: string, context: ScanContext): Promise<DirectoryNode> {
   context.progress.directoriesVisited += 1;
 
-  let canonicalPath = dirPath;
   try {
-    canonicalPath = await realpath(dirPath);
+    const canonicalPath = await realpath(dirPath);
     if (context.visitedDirectories.has(canonicalPath)) {
       return {
         name: path.basename(dirPath) || dirPath,

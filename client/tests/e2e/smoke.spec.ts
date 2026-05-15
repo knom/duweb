@@ -79,7 +79,7 @@ test('loads the app shell and initial job details', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Disk Usage Web' })).toBeVisible()
   await expect(page.getByLabel('Scan path')).toHaveValue('/mnt/files')
-  await expect(page.getByText('Root /mnt/files · 12 directories · 48 files')).toBeVisible()
+  await expect(page.getByText(/^12 directories · 48 files/)).toBeVisible()
   await expect(page.locator('.border-emerald-200').first()).toHaveText('completed')
   await expect(page.getByRole('button', { name: 'Scan' })).toBeVisible()
   await expect(page.getByText('docker-compose-services')).toBeVisible()

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadConfig, type ServerConfig } from '../config.js';
+import { loadConfig } from '../config.js';
 
 describe('config', () => {
   describe('loadConfig', () => {

@@ -38,7 +38,7 @@ export function createApp(config: ServerConfig) {
     const uiMatcher =
       config.normalizedBasePath === ''
         ? /^\/(?!api(?:\/|$)).*/
-        : new RegExp(`^${escapeRegExp(config.normalizedBasePath)}(?:\/.*)?$`);
+        : new RegExp(`^${escapeRegExp(config.normalizedBasePath)}(?:/.*)?$`);
 
     app.get(uiMatcher, (_req, res) => {
       res.sendFile(path.join(clientDistPath, 'index.html'));

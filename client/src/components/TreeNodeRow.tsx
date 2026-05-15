@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { DirectoryNode } from '../types/scan'
 
@@ -32,18 +32,16 @@ export function TreeNodeRow({
   isChildrenLoading,
   onExpandNode,
 }: TreeNodeRowProps) {
-  const [collapsed, setCollapsed] = useState(depth > 1)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (collapseLevel === null) {
+      return depth > 1
+    }
+
+    return depth >= collapseLevel
+  })
   const hasChildren = node.hasChildren
   const children = getChildren(node.id)
   const childrenLoading = isChildrenLoading(node.id)
-
-  useEffect(() => {
-    if (collapseLevel === null) {
-      return
-    }
-
-    setCollapsed(depth >= collapseLevel)
-  }, [collapseLevel, collapseSignal, depth])
 
   function toggleCollapsed(): void {
     const nextCollapsed = !collapsed
@@ -96,7 +94,7 @@ export function TreeNodeRow({
           {childrenLoading && <li className="px-8 py-2 text-xs text-slate-500">Loading...</li>}
           {(children ?? []).map((child) => (
             <TreeNodeRow
-              key={child.id}
+              key={`${child.id}:${collapseSignal}`}
               node={child}
               depth={depth + 1}
               collapseLevel={collapseLevel}

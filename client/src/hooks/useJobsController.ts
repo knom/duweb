@@ -86,7 +86,17 @@ export function useJobsController() {
 
         const first = await fetchJob(existingJobs[0].id)
         if (!cancelled) {
-          setJob(first)
+          setJob((current) => {
+            if (current) {
+              return current
+            }
+
+            if (first?.rootPath) {
+              setScanPath(first.rootPath)
+            }
+
+            return first
+          })
         }
       } finally {
         if (!cancelled) {
@@ -119,6 +129,7 @@ export function useJobsController() {
 
       const updated = (await response.json()) as ScanJob
       setJob(updated)
+      setScanPath(updated.rootPath)
       setJobs((current) => current.map((item) => (item.id === updated.id ? updated : item)))
 
       if (updated.status === 'completed') {
@@ -135,17 +146,6 @@ export function useJobsController() {
       window.clearInterval(timer)
     }
   }, [fetchJobsList, jobId, jobStatus])
-
-  const selectedRootPath = job?.rootPath
-  const selectedJobId = job?.id
-
-  useEffect(() => {
-    if (!selectedRootPath || !selectedJobId) {
-      return
-    }
-
-    setScanPath(selectedRootPath)
-  }, [selectedJobId, selectedRootPath])
 
   const filteredJobs = useMemo(() => {
     const searchValue = deferredSearch.trim().toLowerCase()
@@ -177,6 +177,7 @@ export function useJobsController() {
 
       const created = (await response.json()) as ScanJob
       setJob(created)
+      setScanPath(created.rootPath)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
       setError('Server is not reachable. Start the backend on port 3001.')
@@ -205,6 +206,7 @@ export function useJobsController() {
 
       const created = (await response.json()) as ScanJob
       setJob(created)
+      setScanPath(created.rootPath)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
       setError('Server is not reachable. Start the backend on port 3001.')
@@ -232,7 +234,18 @@ export function useJobsController() {
       setJobs((current) => {
         const updated = current.filter((item) => item.id !== job.id)
         if (updated.length > 0) {
-          void fetchJob(updated[0].id).then((full) => setJob(full))
+          setJob(updated[0])
+          setScanPath(updated[0].rootPath)
+          void fetchJob(updated[0].id).then((full) => {
+            if (!full) {
+              return
+            }
+
+            setJob(full)
+            if (full?.rootPath) {
+              setScanPath(full.rootPath)
+            }
+          })
         } else {
           setJob(null)
         }
@@ -246,7 +259,17 @@ export function useJobsController() {
 
   const selectJob = useCallback(
     (selectedJob: ScanJob): void => {
-      void fetchJob(selectedJob.id).then((full) => setJob(full ?? selectedJob))
+      setJob(selectedJob)
+      setScanPath(selectedJob.rootPath)
+
+      void fetchJob(selectedJob.id).then((full) => {
+        if (!full) {
+          return
+        }
+
+        setJob(full)
+        setScanPath(full.rootPath)
+      })
     },
     [fetchJob],
   )

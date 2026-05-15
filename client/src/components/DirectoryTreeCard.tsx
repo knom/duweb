@@ -60,6 +60,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
         ) : (
           <ul className="px-2 py-2">
             <TreeNodeRow
+              key={`${rootNode.id}:${collapseSignal}`}
               node={rootNode}
               depth={0}
               collapseLevel={collapseLevel}
