@@ -19,6 +19,8 @@ function App() {
     starting,
     sidebarOpen,
     setSidebarOpen,
+    authRequired,
+    authUsername,
     fetchPathSuggestions,
     filteredJobs,
     startScan,
@@ -37,6 +39,8 @@ function App() {
           sidebarOpen={sidebarOpen}
           scanPath={scanPath}
           starting={starting}
+          authRequired={authRequired}
+          authUsername={authUsername}
           onToggleSidebar={() => setSidebarOpen((value) => !value)}
           onScanPathChange={setScanPath}
           fetchPathSuggestions={fetchPathSuggestions}

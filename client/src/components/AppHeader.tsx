@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Menu, Search, X } from 'lucide-react'
+import { Loader2, Menu, Search, User, X } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 
@@ -8,6 +8,8 @@ interface AppHeaderProps {
   sidebarOpen: boolean
   scanPath: string
   starting: boolean
+  authRequired: boolean
+  authUsername: string | null
   onToggleSidebar: () => void
   onScanPathChange: (value: string) => void
   fetchPathSuggestions: (query: string, signal?: AbortSignal) => Promise<string[]>
@@ -19,6 +21,8 @@ export function AppHeader({
   sidebarOpen,
   scanPath,
   starting,
+  authRequired,
+  authUsername,
   onToggleSidebar,
   onScanPathChange,
   fetchPathSuggestions,
@@ -187,6 +191,15 @@ export function AppHeader({
               <Search className="h-4 w-4" />
               {starting ? 'Starting...' : 'Scan'}
             </Button>
+            {authRequired && authUsername && (
+              <div
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700"
+                aria-label="Authenticated user"
+              >
+                <User className="h-4 w-4 text-slate-500" />
+                <span>{authUsername}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

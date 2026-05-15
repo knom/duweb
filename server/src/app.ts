@@ -24,7 +24,7 @@ export function createApp(config: ServerConfig) {
   app.use(createLoggingMiddleware());
 
   api.use(createAuthMiddleware(config));
-  registerHealthRoutes(api);
+  registerHealthRoutes(api, config);
   registerJobRoutes(api);
   registerPathRoutes(api);
 

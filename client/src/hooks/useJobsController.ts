@@ -8,6 +8,16 @@ function apiUrl(path: string): string {
   return `${API_BASE}${suffix}`
 }
 
+interface AuthIdentity {
+  username?: string
+}
+
+interface AuthMeResponse {
+  requireAuth?: boolean
+  identity?: AuthIdentity
+  username?: string
+}
+
 export function useJobsController() {
   const [scanPath, setScanPath] = useState('/')
   const [job, setJob] = useState<ScanJob | null>(null)
@@ -18,7 +28,44 @@ export function useJobsController() {
   const [loadingJobs, setLoadingJobs] = useState(true)
   const [starting, setStarting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [authRequired, setAuthRequired] = useState(false)
+  const [authUsername, setAuthUsername] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAuthState(): Promise<void> {
+      try {
+        const response = await fetch(apiUrl('/auth/me'))
+        if (!response.ok) {
+          return
+        }
+
+        const payload = (await response.json()) as AuthMeResponse
+        if (cancelled) {
+          return
+        }
+
+        const requireAuth = payload.requireAuth === true
+        const username = payload.identity?.username ?? payload.username ?? null
+
+        setAuthRequired(requireAuth)
+        setAuthUsername(requireAuth ? username : null)
+      } catch {
+        if (!cancelled) {
+          setAuthRequired(false)
+          setAuthUsername(null)
+        }
+      }
+    }
+
+    void loadAuthState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const fetchJob = useCallback(async (id: string, signal?: AbortSignal): Promise<ScanJob | null> => {
     try {
@@ -290,6 +337,8 @@ export function useJobsController() {
     starting,
     sidebarOpen,
     setSidebarOpen,
+    authRequired,
+    authUsername,
     fetchPathSuggestions,
     filteredJobs,
     startScan,

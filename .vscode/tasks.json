@@ -24,7 +24,10 @@
     },
     {
       "label": "build:all",
-      "dependsOn": ["build:server", "build:client"],
+      "dependsOn": [
+        "build:server",
+        "build:client"
+      ],
       "dependsOrder": "sequence",
       "group": "build"
     },
@@ -44,7 +47,10 @@
     },
     {
       "label": "run:all",
-      "dependsOn": ["run:server", "run:client"],
+      "dependsOn": [
+        "run:server",
+        "run:client"
+      ],
       "dependsOrder": "parallel"
     }
   ]

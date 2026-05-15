@@ -13,3 +13,12 @@ export async function mockNoSuggestions(page: Page) {
     await fulfillJson(route, { suggestions: [] })
   })
 }
+
+export async function mockAuthMe(
+  page: Page,
+  payload: { requireAuth: boolean; identity?: { username?: string; groups?: string[] } },
+) {
+  await page.route('**/api/auth/me', async (route) => {
+    await fulfillJson(route, payload)
+  })
+}

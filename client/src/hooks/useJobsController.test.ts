@@ -38,6 +38,10 @@ describe('useJobsController', () => {
     fetchMock.mockImplementation(async (input) => {
       const url = typeof input === 'string' ? input : input.toString()
 
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
       if (url.endsWith('/api/jobs')) {
         return jsonResponse(jobs)
       }
@@ -87,6 +91,10 @@ describe('useJobsController', () => {
     const fetchMock = vi.mocked(fetch)
     fetchMock.mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
 
       if (url.endsWith('/api/jobs')) {
         return jsonResponse([failedJob])
@@ -166,6 +174,10 @@ describe('useJobsController', () => {
     fetchMock.mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString()
 
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
       if (url.endsWith('/api/jobs') && (!init || init.method === undefined)) {
         jobsListCallCount += 1
 
@@ -206,5 +218,36 @@ describe('useJobsController', () => {
 
     expect(result.current.jobs[0]?.id).toBe('job-2')
     expect(jobsListCallCount).toBe(2)
+  })
+
+  it('exposes auth-required username only when auth is required', async () => {
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({
+          requireAuth: true,
+          identity: { username: 'alice', groups: ['diskusage-admins'] },
+        })
+      }
+
+      if (url.endsWith('/api/jobs')) {
+        return jsonResponse([])
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    await waitFor(() => {
+      expect(result.current.authRequired).toBe(true)
+      expect(result.current.authUsername).toBe('alice')
+    })
   })
 })
