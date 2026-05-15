@@ -218,6 +218,44 @@ export class SQLiteJobRepository implements JobRepository {
     return rows.map((row) => mapRowToStoredNode(row));
   }
 
+  getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
+    if (parentNodeIds.length === 0) {
+      return {};
+    }
+
+    const uniqueParentIds = [...new Set(parentNodeIds)];
+    const placeholders = uniqueParentIds.map(() => '?').join(', ');
+
+    const rows = this.db
+      .prepare(
+        `SELECT node_id, job_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
+         FROM job_nodes
+         WHERE job_id = ? AND parent_node_id IN (${placeholders})
+         ORDER BY parent_node_id ASC, size_bytes DESC, name ASC`,
+      )
+      .all(jobId, ...uniqueParentIds) as unknown as JobNodeRow[];
+
+    const byParentId = Object.fromEntries(uniqueParentIds.map((id) => [id, [] as StoredDirectoryNode[]])) as Record<
+      number,
+      StoredDirectoryNode[]
+    >;
+
+    for (const row of rows) {
+      const node = mapRowToStoredNode(row);
+      const parentId = node.parentId;
+
+      if (parentId === null) {
+        continue;
+      }
+
+      const existing = byParentId[parentId] ?? [];
+      existing.push(node);
+      byParentId[parentId] = existing;
+    }
+
+    return byParentId;
+  }
+
   deleteJob(id: string): boolean {
     const result = this.db.prepare('DELETE FROM jobs WHERE id = ?').run(id);
     return result.changes > 0;

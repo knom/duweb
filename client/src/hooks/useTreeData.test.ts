@@ -33,10 +33,10 @@ describe('useTreeData', () => {
   })
 
   it('prefetches deeper levels in background and clears postloading state', async () => {
-    let resolveFirstLevel!: (response: Response) => void
+    let resolveFirstLevelBatch!: (response: Response) => void
 
     const fetchMock = vi.mocked(fetch)
-    fetchMock.mockImplementation(async (input) => {
+    fetchMock.mockImplementation(async (input, init) => {
       const url = typeof input === 'string' ? input : input.toString()
 
       if (url.endsWith('/api/jobs/job-1/tree/root')) {
@@ -56,29 +56,38 @@ describe('useTreeData', () => {
         })
       }
 
-      if (url.endsWith('/api/jobs/job-1/tree/nodes/10/children')) {
-        return await new Promise<Response>((resolve) => {
-          resolveFirstLevel = resolve
-        })
-      }
+      if (url.endsWith('/api/jobs/job-1/tree/children-batch')) {
+        const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as { parentIds?: number[] }) : {}
+        const parentIds = Array.isArray(body.parentIds) ? body.parentIds : []
 
-      if (url.endsWith('/api/jobs/job-1/tree/nodes/11/children')) {
-        return jsonResponse({
-          children: [
-            {
-              id: 12,
-              parentId: 11,
-              jobId: 'job-1',
-              depth: 2,
-              name: 'leaf',
-              path: '/mnt/files/parent/leaf',
-              sizeBytes: 50,
-              percentOfRoot: 10,
-              inaccessible: false,
-              hasChildren: false,
+        if (parentIds.includes(10)) {
+          return await new Promise<Response>((resolve) => {
+            resolveFirstLevelBatch = resolve
+          })
+        }
+
+        if (parentIds.includes(11)) {
+          return jsonResponse({
+            byParentId: {
+              '11': [
+                {
+                  id: 12,
+                  parentId: 11,
+                  jobId: 'job-1',
+                  depth: 2,
+                  name: 'leaf',
+                  path: '/mnt/files/parent/leaf',
+                  sizeBytes: 50,
+                  percentOfRoot: 10,
+                  inaccessible: false,
+                  hasChildren: false,
+                },
+              ],
             },
-          ],
-        })
+          })
+        }
+
+        return jsonResponse({ byParentId: {} })
       }
 
       return jsonResponse({ error: 'not-found' }, 404)
@@ -94,22 +103,24 @@ describe('useTreeData', () => {
       expect(result.current.isPostLoading).toBe(true)
     })
 
-    resolveFirstLevel(
+    resolveFirstLevelBatch(
       jsonResponse({
-        children: [
-          {
-            id: 11,
-            parentId: 10,
-            jobId: 'job-1',
-            depth: 1,
-            name: 'parent',
-            path: '/mnt/files/parent',
-            sizeBytes: 100,
-            percentOfRoot: 20,
-            inaccessible: false,
-            hasChildren: true,
-          },
-        ],
+        byParentId: {
+          '10': [
+            {
+              id: 11,
+              parentId: 10,
+              jobId: 'job-1',
+              depth: 1,
+              name: 'parent',
+              path: '/mnt/files/parent',
+              sizeBytes: 100,
+              percentOfRoot: 20,
+              inaccessible: false,
+              hasChildren: true,
+            },
+          ],
+        },
       }),
     )
 

@@ -49,22 +49,24 @@ async function mockInitialJobs(page: Page) {
     })
   })
 
-  await page.route('**/api/jobs/job-1/tree/nodes/10/children', async (route) => {
+  await page.route('**/api/jobs/job-1/tree/children-batch', async (route) => {
     await fulfillJson(route, {
-      children: [
-        {
-          id: 11,
-          parentId: 10,
-          jobId: 'job-1',
-          depth: 1,
-          name: 'docker-compose-services',
-          path: '/mnt/files/docker-compose-services',
-          sizeBytes: 512,
-          percentOfRoot: 50,
-          inaccessible: false,
-          hasChildren: false,
-        },
-      ],
+      byParentId: {
+        '10': [
+          {
+            id: 11,
+            parentId: 10,
+            jobId: 'job-1',
+            depth: 1,
+            name: 'docker-compose-services',
+            path: '/mnt/files/docker-compose-services',
+            sizeBytes: 512,
+            percentOfRoot: 50,
+            inaccessible: false,
+            hasChildren: false,
+          },
+        ],
+      },
     })
   })
 }
@@ -135,9 +137,18 @@ test('prefetches deeper tree levels in background', async ({ page }) => {
     })
   })
 
-  await page.route('**/api/jobs/job-1/tree/nodes/10/children', async (route) => {
-    await fulfillJson(route, {
-      children: [
+  await page.route('**/api/jobs/job-1/tree/children-batch', async (route) => {
+    const payload = route.request().postDataJSON() as { parentIds?: number[] }
+    const parentIds = Array.isArray(payload.parentIds) ? payload.parentIds : []
+
+    if (parentIds.includes(11)) {
+      level2Fetched = true
+    }
+
+    const byParentId: Record<string, unknown[]> = {}
+
+    if (parentIds.includes(10)) {
+      byParentId['10'] = [
         {
           id: 11,
           parentId: 10,
@@ -150,14 +161,11 @@ test('prefetches deeper tree levels in background', async ({ page }) => {
           inaccessible: false,
           hasChildren: true,
         },
-      ],
-    })
-  })
+      ]
+    }
 
-  await page.route('**/api/jobs/job-1/tree/nodes/11/children', async (route) => {
-    level2Fetched = true
-    await fulfillJson(route, {
-      children: [
+    if (parentIds.includes(11)) {
+      byParentId['11'] = [
         {
           id: 12,
           parentId: 11,
@@ -170,8 +178,10 @@ test('prefetches deeper tree levels in background', async ({ page }) => {
           inaccessible: false,
           hasChildren: false,
         },
-      ],
-    })
+      ]
+    }
+
+    await fulfillJson(route, { byParentId })
   })
 
   await page.goto('/')
@@ -236,25 +246,35 @@ test('shows and clears postloading indicator while background prefetch runs', as
     })
   })
 
-  await page.route('**/api/jobs/job-1/tree/nodes/10/children', async (route) => {
+  await page.route('**/api/jobs/job-1/tree/children-batch', async (route) => {
+    const payload = route.request().postDataJSON() as { parentIds?: number[] }
+    const parentIds = Array.isArray(payload.parentIds) ? payload.parentIds : []
+
+    if (!parentIds.includes(10)) {
+      await fulfillJson(route, { byParentId: {} })
+      return
+    }
+
     await new Promise<void>((resolve) => {
       resolveFirstLevel = resolve
     })
     await fulfillJson(route, {
-      children: [
-        {
-          id: 11,
-          parentId: 10,
-          jobId: 'job-1',
-          depth: 1,
-          name: 'deeper',
-          path: '/mnt/files/deeper',
-          sizeBytes: 100,
-          percentOfRoot: 9.77,
-          inaccessible: false,
-          hasChildren: false,
-        },
-      ],
+      byParentId: {
+        '10': [
+          {
+            id: 11,
+            parentId: 10,
+            jobId: 'job-1',
+            depth: 1,
+            name: 'deeper',
+            path: '/mnt/files/deeper',
+            sizeBytes: 100,
+            percentOfRoot: 9.77,
+            inaccessible: false,
+            hasChildren: false,
+          },
+        ],
+      },
     })
   })
 

@@ -11,6 +11,7 @@ const { mockJobStore } = vi.hoisted(() => ({
     getJob: vi.fn(),
     getRootNode: vi.fn(),
     getNodeChildren: vi.fn(),
+    getNodeChildrenBatch: vi.fn(),
     rerunJob: vi.fn(),
     removeJob: vi.fn(),
   },
@@ -145,5 +146,56 @@ describe('job tree routes', () => {
     expect(response.status).toBe(200);
     expect(mockJobStore.getNodeChildren).toHaveBeenCalledWith('job-1', 10);
     expect(response.body.children).toEqual(children);
+  });
+
+  it('returns 400 when children batch body does not contain parentIds array', async () => {
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/job-1/tree/children-batch').send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Body must contain a parentIds array.');
+  });
+
+  it('returns 400 when children batch contains invalid parent IDs', async () => {
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/job-1/tree/children-batch').send({ parentIds: [10, -1, 'x'] });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('parentIds must contain only positive integers.');
+  });
+
+  it('returns batched children for completed jobs', async () => {
+    const byParentId = {
+      10: [
+        {
+          id: 11,
+          parentId: 10,
+          jobId: 'job-1',
+          depth: 1,
+          name: 'sub',
+          path: '/tmp/sub',
+          sizeBytes: 50,
+          percentOfRoot: 50,
+          inaccessible: false,
+          hasChildren: false,
+        },
+      ],
+      11: [],
+    };
+
+    mockJobStore.getJob.mockResolvedValue(completedJob);
+    mockJobStore.getNodeChildrenBatch.mockReturnValue(byParentId);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/job-1/tree/children-batch').send({ parentIds: [10, 11, 10] });
+
+    expect(response.status).toBe(200);
+    expect(mockJobStore.getNodeChildrenBatch).toHaveBeenCalledWith('job-1', [10, 11]);
+    expect(response.body.byParentId).toEqual({
+      '10': byParentId[10],
+      '11': byParentId[11],
+    });
   });
 });

@@ -6,6 +6,8 @@ interface UseTreeDataArgs {
   apiUrl: (path: string) => string
 }
 
+const PREFETCH_PARENT_BATCH_SIZE = 8
+
 export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
   const [rootNode, setRootNode] = useState<DirectoryNode | null>(null)
   const [childrenByParent, setChildrenByParent] = useState<Record<number, DirectoryNode[]>>({})
@@ -40,6 +42,36 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
 
       const payload = (await response.json()) as { children?: DirectoryNode[] }
       return Array.isArray(payload.children) ? payload.children : []
+    },
+    [apiUrl],
+  )
+
+  const loadNodeChildrenBatch = useCallback(
+    async (jobId: string, parentNodeIds: number[]): Promise<Record<number, DirectoryNode[]>> => {
+      if (parentNodeIds.length === 0) {
+        return {}
+      }
+
+      const response = await fetch(apiUrl(`/jobs/${jobId}/tree/children-batch`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentIds: parentNodeIds }),
+      })
+
+      if (!response.ok) {
+        return {}
+      }
+
+      const payload = (await response.json()) as { byParentId?: Record<string, DirectoryNode[] | unknown> }
+      const byParentId: Record<number, DirectoryNode[]> = {}
+
+      for (const parentId of parentNodeIds) {
+        const key = String(parentId)
+        const children = payload.byParentId?.[key]
+        byParentId[parentId] = Array.isArray(children) ? (children as DirectoryNode[]) : []
+      }
+
+      return byParentId
     },
     [apiUrl],
   )
@@ -93,41 +125,61 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
     const resolvedJobId = jobId
 
     let cancelled = false
-    const queue: DirectoryNode[] = [rootNode]
+    const queue: number[] = [rootNode.id]
 
     async function prefetchTree(): Promise<void> {
       setIsPostLoading(true)
 
       try {
         while (!cancelled && queue.length > 0) {
-          const current = queue.shift()
-          if (!current || !current.hasChildren) {
-            continue
+          const batchParentIds: number[] = []
+
+          while (queue.length > 0 && batchParentIds.length < PREFETCH_PARENT_BATCH_SIZE) {
+            const parentId = queue.shift()
+            if (!parentId || requestedParentsRef.current.has(parentId)) {
+              continue
+            }
+
+            requestedParentsRef.current.add(parentId)
+            batchParentIds.push(parentId)
+            markLoading(parentId, true)
           }
 
-          if (requestedParentsRef.current.has(current.id)) {
+          if (batchParentIds.length === 0) {
             continue
           }
-
-          requestedParentsRef.current.add(current.id)
-          markLoading(current.id, true)
 
           try {
-            const children = await loadNodeChildren(resolvedJobId, current.id)
+            const childrenByParentId = await loadNodeChildrenBatch(resolvedJobId, batchParentIds)
 
             if (cancelled) {
               return
             }
 
-            setChildrenByParent((state) => ({ ...state, [current.id]: children }))
-            for (const child of children) {
-              if (child.hasChildren) {
-                queue.push(child)
+            setChildrenByParent((state) => {
+              const nextState = { ...state }
+
+              for (const parentId of batchParentIds) {
+                nextState[parentId] = childrenByParentId[parentId] ?? []
+              }
+
+              return nextState
+            })
+
+            for (const parentId of batchParentIds) {
+              const children = childrenByParentId[parentId] ?? []
+
+              for (const child of children) {
+                if (child.hasChildren && !requestedParentsRef.current.has(child.id)) {
+                  queue.push(child.id)
+                }
               }
             }
           } finally {
             if (!cancelled) {
-              markLoading(current.id, false)
+              for (const parentId of batchParentIds) {
+                markLoading(parentId, false)
+              }
             }
           }
         }
@@ -144,7 +196,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
       cancelled = true
       setIsPostLoading(false)
     }
-  }, [jobId, jobStatus, loadNodeChildren, markLoading, rootNode])
+  }, [jobId, jobStatus, loadNodeChildrenBatch, markLoading, rootNode])
 
   const maxDepth = useMemo(() => {
     if (!rootNode) {

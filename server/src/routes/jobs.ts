@@ -84,6 +84,40 @@ export function registerJobRoutes(api: Router) {
     res.json({ children });
   });
 
+  api.post('/jobs/:id/tree/children-batch', async (req, res) => {
+    const jobId = req.params.id;
+    const parentIdsRaw = req.body?.parentIds;
+
+    if (!Array.isArray(parentIdsRaw)) {
+      res.status(400).json({ error: 'Body must contain a parentIds array.' });
+      return;
+    }
+
+    const parsedParentIds = parentIdsRaw
+      .map((value) => (typeof value === 'number' ? value : Number.NaN))
+      .filter((value) => Number.isInteger(value) && value > 0);
+
+    if (parsedParentIds.length !== parentIdsRaw.length) {
+      res.status(400).json({ error: 'parentIds must contain only positive integers.' });
+      return;
+    }
+
+    const parentIds = [...new Set(parsedParentIds)];
+    const job = await jobStore.getJob(jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found.' });
+      return;
+    }
+
+    if (job.status !== 'completed') {
+      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+      return;
+    }
+
+    const byParentId = jobStore.getNodeChildrenBatch(jobId, parentIds);
+    res.json({ byParentId });
+  });
+
   api.post('/jobs/:id/rerun', (req, res) => {
     const jobId = req.params.id;
     console.log(`[Jobs] Rerunning job: ${jobId}`);

@@ -8,5 +8,6 @@ export interface JobRepository {
   saveJobTree(jobId: string, root: DirectoryNode): void;
   getJobRootNode(jobId: string): StoredDirectoryNode | undefined;
   getJobNodeChildren(jobId: string, parentNodeId: number): StoredDirectoryNode[];
+  getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]>;
   deleteJob(id: string): boolean;
 }

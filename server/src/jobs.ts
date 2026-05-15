@@ -58,6 +58,10 @@ class JobStore {
     return this.repository.getJobNodeChildren(jobId, parentNodeId);
   }
 
+  getNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
+    return this.repository.getJobNodeChildrenBatch(jobId, parentNodeIds);
+  }
+
   removeJob(id: string): boolean {
     const removed = this.repository.deleteJob(id);
     if (removed) {

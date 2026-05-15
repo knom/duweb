@@ -39,9 +39,13 @@ test('shows level options based on tree depth and supports collapse interaction'
     })
   })
 
-  await page.route('**/api/jobs/job-tree/tree/nodes/1/children', async (route) => {
-    await fulfillJson(route, {
-      children: [
+  await page.route('**/api/jobs/job-tree/tree/children-batch', async (route) => {
+    const payload = route.request().postDataJSON() as { parentIds?: number[] }
+    const parentIds = Array.isArray(payload.parentIds) ? payload.parentIds : []
+    const byParentId: Record<string, unknown[]> = {}
+
+    if (parentIds.includes(1)) {
+      byParentId['1'] = [
         {
           id: 2,
           parentId: 1,
@@ -54,13 +58,11 @@ test('shows level options based on tree depth and supports collapse interaction'
           inaccessible: false,
           hasChildren: true,
         },
-      ],
-    })
-  })
+      ]
+    }
 
-  await page.route('**/api/jobs/job-tree/tree/nodes/2/children', async (route) => {
-    await fulfillJson(route, {
-      children: [
+    if (parentIds.includes(2)) {
+      byParentId['2'] = [
         {
           id: 3,
           parentId: 2,
@@ -73,8 +75,10 @@ test('shows level options based on tree depth and supports collapse interaction'
           inaccessible: false,
           hasChildren: false,
         },
-      ],
-    })
+      ]
+    }
+
+    await fulfillJson(route, { byParentId })
   })
 
   await mockNoSuggestions(page)
