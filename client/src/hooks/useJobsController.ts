@@ -137,10 +137,7 @@ export function useJobsController() {
 
     return jobs.filter((item) => {
       const matchesFilter = filter === 'all' || item.status === filter
-      const matchesSearch =
-        searchValue.length === 0 ||
-        item.rootPath.toLowerCase().includes(searchValue) ||
-        item.id.toLowerCase().includes(searchValue)
+      const matchesSearch = searchValue.length === 0 || item.rootPath.toLowerCase().includes(searchValue)
 
       return matchesFilter && matchesSearch
     })
