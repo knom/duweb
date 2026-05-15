@@ -205,19 +205,6 @@ export class SQLiteJobRepository implements JobRepository {
     return row ? mapRowToStoredNode(row) : undefined;
   }
 
-  getJobNodeChildren(jobId: string, parentNodeId: number): StoredDirectoryNode[] {
-    const rows = this.db
-      .prepare(
-        `SELECT node_id, job_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
-         FROM job_nodes
-         WHERE job_id = ? AND parent_node_id = ?
-         ORDER BY size_bytes DESC, name ASC`,
-      )
-      .all(jobId, parentNodeId) as unknown as JobNodeRow[];
-
-    return rows.map((row) => mapRowToStoredNode(row));
-  }
-
   getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
     if (parentNodeIds.length === 0) {
       return {};

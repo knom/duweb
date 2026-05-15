@@ -11,67 +11,68 @@ const PREFETCH_PARENT_BATCH_SIZE = 8
 export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
   const [rootNode, setRootNode] = useState<DirectoryNode | null>(null)
   const [childrenByParent, setChildrenByParent] = useState<Record<number, DirectoryNode[]>>({})
-  const [loadingParents, setLoadingParents] = useState<Record<number, boolean>>({})
+  const [loadingParentIds, setLoadingParentIds] = useState<Set<number>>(new Set())
   const [treeUnavailable, setTreeUnavailable] = useState(false)
   const [isPostLoading, setIsPostLoading] = useState(false)
   const [selectedLevel, setSelectedLevel] = useState(1)
   const [collapseLevel, setCollapseLevel] = useState<number | null>(null)
   const [collapseSignal, setCollapseSignal] = useState(0)
 
-  const requestedParentsRef = useRef<Set<number>>(new Set())
+  const loadedParentsRef = useRef<Set<number>>(new Set())
 
   const clearTreeState = useCallback((): void => {
     setRootNode(null)
     setChildrenByParent({})
-    setLoadingParents({})
+    setLoadingParentIds(new Set())
     setTreeUnavailable(false)
     setIsPostLoading(false)
-    requestedParentsRef.current = new Set()
+    loadedParentsRef.current = new Set()
   }, [])
 
   const markLoading = useCallback((nodeId: number, loading: boolean): void => {
-    setLoadingParents((state) => ({ ...state, [nodeId]: loading }))
+    setLoadingParentIds((state) => {
+      const next = new Set(state)
+
+      if (loading) {
+        next.add(nodeId)
+      } else {
+        next.delete(nodeId)
+      }
+
+      return next
+    })
   }, [])
 
-  const loadNodeChildren = useCallback(
-    async (jobId: string, nodeId: number): Promise<DirectoryNode[]> => {
-      const response = await fetch(apiUrl(`/jobs/${jobId}/tree/nodes/${nodeId}/children`))
-      if (!response.ok) {
-        return []
-      }
-
-      const payload = (await response.json()) as { children?: DirectoryNode[] }
-      return Array.isArray(payload.children) ? payload.children : []
-    },
-    [apiUrl],
-  )
-
   const loadNodeChildrenBatch = useCallback(
-    async (jobId: string, parentNodeIds: number[]): Promise<Record<number, DirectoryNode[]>> => {
+    async (jobId: string, parentNodeIds: number[]): Promise<{ ok: boolean; byParentId: Record<number, DirectoryNode[]> }> => {
       if (parentNodeIds.length === 0) {
-        return {}
+        return { ok: true, byParentId: {} }
       }
 
-      const response = await fetch(apiUrl(`/jobs/${jobId}/tree/children-batch`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parentIds: parentNodeIds }),
-      })
+      try {
+        const response = await fetch(apiUrl(`/jobs/${jobId}/tree/children-batch`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parentIds: parentNodeIds }),
+        })
 
-      if (!response.ok) {
-        return {}
+        if (!response.ok) {
+          return { ok: false, byParentId: {} }
+        }
+
+        const payload = (await response.json()) as { byParentId?: Record<string, DirectoryNode[] | unknown> }
+        const byParentId: Record<number, DirectoryNode[]> = {}
+
+        for (const parentId of parentNodeIds) {
+          const key = String(parentId)
+          const children = payload.byParentId?.[key]
+          byParentId[parentId] = Array.isArray(children) ? (children as DirectoryNode[]) : []
+        }
+
+        return { ok: true, byParentId }
+      } catch {
+        return { ok: false, byParentId: {} }
       }
-
-      const payload = (await response.json()) as { byParentId?: Record<string, DirectoryNode[] | unknown> }
-      const byParentId: Record<number, DirectoryNode[]> = {}
-
-      for (const parentId of parentNodeIds) {
-        const key = String(parentId)
-        const children = payload.byParentId?.[key]
-        byParentId[parentId] = Array.isArray(children) ? (children as DirectoryNode[]) : []
-      }
-
-      return byParentId
     },
     [apiUrl],
   )
@@ -136,11 +137,10 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
 
           while (queue.length > 0 && batchParentIds.length < PREFETCH_PARENT_BATCH_SIZE) {
             const parentId = queue.shift()
-            if (!parentId || requestedParentsRef.current.has(parentId)) {
+            if (!parentId || loadedParentsRef.current.has(parentId)) {
               continue
             }
 
-            requestedParentsRef.current.add(parentId)
             batchParentIds.push(parentId)
             markLoading(parentId, true)
           }
@@ -150,27 +150,33 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
           }
 
           try {
-            const childrenByParentId = await loadNodeChildrenBatch(resolvedJobId, batchParentIds)
+            const batchResult = await loadNodeChildrenBatch(resolvedJobId, batchParentIds)
 
             if (cancelled) {
               return
+            }
+
+            if (!batchResult.ok) {
+              continue
             }
 
             setChildrenByParent((state) => {
               const nextState = { ...state }
 
               for (const parentId of batchParentIds) {
-                nextState[parentId] = childrenByParentId[parentId] ?? []
+                const children = batchResult.byParentId[parentId] ?? []
+                nextState[parentId] = children
+                loadedParentsRef.current.add(parentId)
               }
 
               return nextState
             })
 
             for (const parentId of batchParentIds) {
-              const children = childrenByParentId[parentId] ?? []
+              const children = batchResult.byParentId[parentId] ?? []
 
               for (const child of children) {
-                if (child.hasChildren && !requestedParentsRef.current.has(child.id)) {
+                if (child.hasChildren && !loadedParentsRef.current.has(child.id)) {
                   queue.push(child.id)
                 }
               }
@@ -227,28 +233,33 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
 
   const ensureChildrenLoaded = useCallback(
     async (node: DirectoryNode): Promise<void> => {
-      if (!jobId || !node.hasChildren || childrenByParent[node.id] || loadingParents[node.id]) {
+      if (!jobId || !node.hasChildren || node.id in childrenByParent || loadingParentIds.has(node.id)) {
         return
       }
 
-      if (requestedParentsRef.current.has(node.id)) {
+      if (loadedParentsRef.current.has(node.id)) {
         return
       }
 
-      requestedParentsRef.current.add(node.id)
       markLoading(node.id, true)
 
       try {
-        const payload = await loadNodeChildren(jobId, node.id)
+        const batchResult = await loadNodeChildrenBatch(jobId, [node.id])
+        if (!batchResult.ok) {
+          return
+        }
+
+        const payload = batchResult.byParentId[node.id] ?? []
         setChildrenByParent((current) => ({
           ...current,
           [node.id]: payload,
         }))
+        loadedParentsRef.current.add(node.id)
       } finally {
         markLoading(node.id, false)
       }
     },
-    [childrenByParent, jobId, loadNodeChildren, loadingParents, markLoading],
+    [childrenByParent, jobId, loadNodeChildrenBatch, loadingParentIds, markLoading],
   )
 
   return {
@@ -262,7 +273,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
     collapseSignal,
     applyCollapse,
     getChildren: (parentId: number): DirectoryNode[] | undefined => childrenByParent[parentId],
-    isChildrenLoading: (parentId: number): boolean => Boolean(loadingParents[parentId]),
+    isChildrenLoading: (parentId: number): boolean => loadingParentIds.has(parentId),
     ensureChildrenLoaded,
   }
 }

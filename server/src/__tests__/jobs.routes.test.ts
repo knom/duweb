@@ -10,7 +10,6 @@ const { mockJobStore } = vi.hoisted(() => ({
     listJobs: vi.fn(),
     getJob: vi.fn(),
     getRootNode: vi.fn(),
-    getNodeChildren: vi.fn(),
     getNodeChildrenBatch: vi.fn(),
     rerunJob: vi.fn(),
     removeJob: vi.fn(),
@@ -112,42 +111,6 @@ describe('job tree routes', () => {
     expect(response.body.node).toEqual(rootNode);
   });
 
-  it('returns 400 for invalid parent node id in children endpoint', async () => {
-    const app = buildApp();
-
-    const response = await request(app).get('/api/jobs/job-1/tree/nodes/not-a-number/children');
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('nodeId must be a positive integer.');
-  });
-
-  it('returns children for completed jobs', async () => {
-    const children: StoredDirectoryNode[] = [
-      {
-        id: 11,
-        parentId: 10,
-        jobId: 'job-1',
-        depth: 1,
-        name: 'sub',
-        path: '/tmp/sub',
-        sizeBytes: 50,
-        percentOfRoot: 50,
-        inaccessible: false,
-        hasChildren: false,
-      },
-    ];
-
-    mockJobStore.getJob.mockResolvedValue(completedJob);
-    mockJobStore.getNodeChildren.mockReturnValue(children);
-    const app = buildApp();
-
-    const response = await request(app).get('/api/jobs/job-1/tree/nodes/10/children');
-
-    expect(response.status).toBe(200);
-    expect(mockJobStore.getNodeChildren).toHaveBeenCalledWith('job-1', 10);
-    expect(response.body.children).toEqual(children);
-  });
-
   it('returns 400 when children batch body does not contain parentIds array', async () => {
     const app = buildApp();
 
@@ -164,6 +127,17 @@ describe('job tree routes', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe('parentIds must contain only positive integers.');
+  });
+
+  it('returns 400 when children batch exceeds the maximum parent IDs', async () => {
+    const app = buildApp();
+
+    const response = await request(app)
+      .post('/api/jobs/job-1/tree/children-batch')
+      .send({ parentIds: Array.from({ length: 257 }, (_, index) => index + 1) });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('parentIds cannot contain more than 256 entries.');
   });
 
   it('returns batched children for completed jobs', async () => {

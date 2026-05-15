@@ -1,7 +1,24 @@
-import type { Router } from 'express';
+import type { Response, Router } from 'express';
 import { jobStore } from '../jobs.js';
 
+const MAX_BATCH_PARENT_IDS = 256;
+
 export function registerJobRoutes(api: Router) {
+  async function ensureCompletedTreeJob(jobId: string, res: Response): Promise<boolean> {
+    const job = await jobStore.getJob(jobId);
+    if (!job) {
+      res.status(404).json({ error: 'Job not found.' });
+      return false;
+    }
+
+    if (job.status !== 'completed') {
+      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+      return false;
+    }
+
+    return true;
+  }
+
   api.post('/jobs/scan', (req, res) => {
     const scanPath = typeof req.body?.path === 'string' ? req.body.path.trim() : '';
 
@@ -38,15 +55,7 @@ export function registerJobRoutes(api: Router) {
 
   api.get('/jobs/:id/tree/root', async (req, res) => {
     const jobId = req.params.id;
-    const job = await jobStore.getJob(jobId);
-
-    if (!job) {
-      res.status(404).json({ error: 'Job not found.' });
-      return;
-    }
-
-    if (job.status !== 'completed') {
-      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+    if (!(await ensureCompletedTreeJob(jobId, res))) {
       return;
     }
 
@@ -57,31 +66,6 @@ export function registerJobRoutes(api: Router) {
     }
 
     res.json({ node: root });
-  });
-
-  api.get('/jobs/:id/tree/nodes/:nodeId/children', async (req, res) => {
-    const jobId = req.params.id;
-    const nodeIdRaw = req.params.nodeId;
-    const parentNodeId = Number.parseInt(nodeIdRaw, 10);
-
-    if (!Number.isFinite(parentNodeId) || parentNodeId <= 0) {
-      res.status(400).json({ error: 'nodeId must be a positive integer.' });
-      return;
-    }
-
-    const job = await jobStore.getJob(jobId);
-    if (!job) {
-      res.status(404).json({ error: 'Job not found.' });
-      return;
-    }
-
-    if (job.status !== 'completed') {
-      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
-      return;
-    }
-
-    const children = jobStore.getNodeChildren(jobId, parentNodeId);
-    res.json({ children });
   });
 
   api.post('/jobs/:id/tree/children-batch', async (req, res) => {
@@ -103,14 +87,12 @@ export function registerJobRoutes(api: Router) {
     }
 
     const parentIds = [...new Set(parsedParentIds)];
-    const job = await jobStore.getJob(jobId);
-    if (!job) {
-      res.status(404).json({ error: 'Job not found.' });
+    if (parentIds.length > MAX_BATCH_PARENT_IDS) {
+      res.status(400).json({ error: `parentIds cannot contain more than ${MAX_BATCH_PARENT_IDS} entries.` });
       return;
     }
 
-    if (job.status !== 'completed') {
-      res.status(409).json({ error: 'Tree is only available for completed jobs.' });
+    if (!(await ensureCompletedTreeJob(jobId, res))) {
       return;
     }
 

@@ -154,4 +154,86 @@ describe('useTreeData', () => {
     expect(result.current.rootNode).toBeNull()
     expect(result.current.levelOptions).toEqual([])
   })
+
+  it('recovers when initial batch prefetch fails and loads children via on-demand expand', async () => {
+    let batchRequestCount = 0
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/jobs/job-1/tree/root')) {
+        return jsonResponse({
+          node: {
+            id: 10,
+            parentId: null,
+            jobId: 'job-1',
+            depth: 0,
+            name: 'files',
+            path: '/mnt/files',
+            sizeBytes: 500,
+            percentOfRoot: 100,
+            inaccessible: false,
+            hasChildren: true,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/jobs/job-1/tree/children-batch')) {
+        batchRequestCount += 1
+
+        if (batchRequestCount === 1) {
+          return jsonResponse({ error: 'temporary failure' }, 500)
+        }
+
+        const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as { parentIds?: number[] }) : {}
+        const parentIds = Array.isArray(body.parentIds) ? body.parentIds : []
+
+        if (parentIds.includes(10)) {
+          return jsonResponse({
+            byParentId: {
+              '10': [
+                {
+                  id: 11,
+                  parentId: 10,
+                  jobId: 'job-1',
+                  depth: 1,
+                  name: 'recovered-child',
+                  path: '/mnt/files/recovered-child',
+                  sizeBytes: 100,
+                  percentOfRoot: 20,
+                  inaccessible: false,
+                  hasChildren: false,
+                },
+              ],
+            },
+          })
+        }
+
+        return jsonResponse({ byParentId: {} })
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useTreeData({ job: completedJob, apiUrl }))
+
+    await waitFor(() => {
+      expect(result.current.rootNode?.id).toBe(10)
+    })
+
+    await waitFor(() => {
+      expect(result.current.isPostLoading).toBe(false)
+    })
+
+    expect(result.current.getChildren(10)).toBeUndefined()
+
+    await result.current.ensureChildrenLoaded(result.current.rootNode as NonNullable<typeof result.current.rootNode>)
+
+    await waitFor(() => {
+      expect(result.current.getChildren(10)?.[0]?.name).toBe('recovered-child')
+    })
+
+    expect(batchRequestCount).toBe(2)
+  })
 })

@@ -54,10 +54,6 @@ class JobStore {
     return this.repository.getJobRootNode(jobId);
   }
 
-  getNodeChildren(jobId: string, parentNodeId: number): StoredDirectoryNode[] {
-    return this.repository.getJobNodeChildren(jobId, parentNodeId);
-  }
-
   getNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
     return this.repository.getJobNodeChildrenBatch(jobId, parentNodeIds);
   }
