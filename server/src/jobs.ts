@@ -4,7 +4,7 @@ import type { ScanJob, StoredDirectoryNode } from './types.js';
 import type { JobRepository } from './repositories/jobRepository.js';
 import { createJobRepository } from './repositories/createJobRepository.js';
 
-class JobStore {
+export class JobStore {
   private readonly jobs = new Map<string, ScanJob>();
 
   private withRuntime(job: ScanJob): ScanJob {

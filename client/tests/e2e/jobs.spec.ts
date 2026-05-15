@@ -139,3 +139,90 @@ test('search filters by path only and ignores job id', async ({ page }) => {
   await expect(page.getByRole('button', { name: '/var/log' })).toBeVisible()
   await expect(page.getByRole('button', { name: '/mnt/files' })).toHaveCount(0)
 })
+
+test('shows runtime only for non-running states in list and tree description', async ({ page }) => {
+  await page.route('**/api/jobs', async (route) => {
+    await fulfillJson(route, [
+      {
+        id: 'job-running',
+        status: 'running',
+        rootPath: '/mnt/running',
+        runtimeMs: 12_000,
+        progress: { directoriesVisited: 3, filesVisited: 8, startedAt: '2026-05-14T10:00:00.000Z' },
+      },
+      {
+        id: 'job-completed',
+        status: 'completed',
+        rootPath: '/mnt/completed',
+        runtimeMs: 65_000,
+        progress: {
+          directoriesVisited: 5,
+          filesVisited: 12,
+          startedAt: '2026-05-14T09:00:00.000Z',
+          endedAt: '2026-05-14T09:01:05.000Z',
+        },
+      },
+    ])
+  })
+
+  await page.route('**/api/jobs/job-running', async (route) => {
+    await fulfillJson(route, {
+      id: 'job-running',
+      status: 'running',
+      rootPath: '/mnt/running',
+      runtimeMs: 12_000,
+      progress: { directoriesVisited: 3, filesVisited: 8, startedAt: '2026-05-14T10:00:00.000Z' },
+    })
+  })
+
+  await page.route('**/api/jobs/job-completed', async (route) => {
+    await fulfillJson(route, {
+      id: 'job-completed',
+      status: 'completed',
+      rootPath: '/mnt/completed',
+      runtimeMs: 65_000,
+      progress: {
+        directoriesVisited: 5,
+        filesVisited: 12,
+        startedAt: '2026-05-14T09:00:00.000Z',
+        endedAt: '2026-05-14T09:01:05.000Z',
+      },
+    })
+  })
+
+  await page.route('**/api/jobs/job-completed/tree/root', async (route) => {
+    await fulfillJson(route, {
+      node: {
+        id: 1,
+        parentId: null,
+        jobId: 'job-completed',
+        depth: 1,
+        name: 'completed',
+        path: '/mnt/completed',
+        sizeBytes: 1024,
+        percentOfRoot: 100,
+        inaccessible: false,
+        hasChildren: false,
+      },
+    })
+  })
+
+  await page.route('**/api/jobs/job-completed/tree/children-batch', async (route) => {
+    await fulfillJson(route, { byParentId: { '1': [] } })
+  })
+
+  await mockNoSuggestions(page)
+
+  await page.goto('/')
+
+  const runningRow = page.getByRole('button', { name: '/mnt/running' })
+  const completedRow = page.getByRole('button', { name: '/mnt/completed' })
+
+  await expect(runningRow.locator('div[aria-hidden="true"]')).toContainText('Runtime:')
+  await expect(completedRow.locator('div[aria-hidden="false"]')).toContainText('Runtime: 1m 5s')
+  await expect(page.getByText(/^3 directories · 8 files$/)).toBeVisible()
+
+  await completedRow.click()
+
+  await expect(page.getByText(/^5 directories · 12 files · Runtime 1m 5s$/)).toBeVisible()
+})

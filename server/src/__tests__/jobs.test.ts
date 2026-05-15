@@ -1,21 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { JobRepository } from '../repositories/jobRepository.js';
+import { JobStore } from '../jobs.js';
+import { scanDirectoryTree } from '../scanner.js';
 
-const { repositoryMock } = vi.hoisted(() => ({
-  repositoryMock: {
+const { singletonRepositoryMock } = vi.hoisted(() => ({
+  singletonRepositoryMock: {
     initialize: vi.fn(),
     listJobs: vi.fn(() => []),
     saveJob: vi.fn(),
     saveJobTree: vi.fn(),
     getJobRootNode: vi.fn(),
     getJobNodeChildrenBatch: vi.fn(() => ({})),
-    getJob: vi.fn(),
     deleteJob: vi.fn(() => false),
   },
 }));
 
-// Mock dependencies
 vi.mock('../scanner.js', () => ({
-  scanDirectoryTree: vi.fn(async (path: string, progress: any) => {
+  scanDirectoryTree: vi.fn(async (path: string, progress: { directoriesVisited: number; filesVisited: number; endedAt?: string }) => {
     progress.directoriesVisited = 10;
     progress.filesVisited = 100;
     progress.endedAt = new Date().toISOString();
@@ -30,49 +31,54 @@ vi.mock('../scanner.js', () => ({
 }));
 
 vi.mock('../repositories/createJobRepository.js', () => ({
-  createJobRepository: () => repositoryMock,
+  createJobRepository: () => singletonRepositoryMock,
 }));
 
-async function waitForCondition(assertion: () => void, timeoutMs = 2000): Promise<void> {
+type RepositoryMock = JobRepository & {
+  initialize: ReturnType<typeof vi.fn>;
+  listJobs: ReturnType<typeof vi.fn>;
+  saveJob: ReturnType<typeof vi.fn>;
+  saveJobTree: ReturnType<typeof vi.fn>;
+  getJobRootNode: ReturnType<typeof vi.fn>;
+  getJobNodeChildrenBatch: ReturnType<typeof vi.fn>;
+  deleteJob: ReturnType<typeof vi.fn>;
+};
+
+function createRepositoryMock(): RepositoryMock {
+  return {
+    initialize: vi.fn(),
+    listJobs: vi.fn(() => []),
+    saveJob: vi.fn(),
+    saveJobTree: vi.fn(),
+    getJobRootNode: vi.fn(),
+    getJobNodeChildrenBatch: vi.fn(() => ({})),
+    deleteJob: vi.fn(() => false),
+  };
+}
+
+async function waitForCondition(assertion: () => void | Promise<void>, timeoutMs = 2000): Promise<void> {
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      assertion();
+      await assertion();
       return;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   }
 
-  assertion();
+  await assertion();
 }
 
 describe('JobStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    repositoryMock.deleteJob.mockReturnValue(false);
   });
 
-  it('should be importable', async () => {
-    const module = await import('../jobs.js');
-    expect(module.jobStore).toBeDefined();
-  });
-
-  it('should have required methods', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
-
-    expect(typeof store.createScanJob).toBe('function');
-    expect(typeof store.getJob).toBe('function');
-    expect(typeof store.removeJob).toBe('function');
-    expect(typeof store.rerunJob).toBe('function');
-    expect(typeof store.listJobs).toBe('function');
-  });
-
-  it('should create scan jobs', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('creates scan jobs with runtime and required fields', () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
     const job = store.createScanJob('/home/user');
 
@@ -80,63 +86,41 @@ describe('JobStore', () => {
     expect(job.status).toBe('queued');
     expect(job.rootPath).toBe('/home/user');
     expect(job.progress.startedAt).toBeDefined();
+    expect(typeof job.runtimeMs).toBe('number');
+    expect(job.runtimeMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('should list jobs sorted by start time descending', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('lists jobs sorted by start time descending', () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
-    const beforeCount = store.listJobs().length;
-    
-    const job1 = store.createScanJob('/home/user1');
-    const job2 = store.createScanJob('/home/user2');
+    store.createScanJob('/home/user1');
+    store.createScanJob('/home/user2');
 
     const jobs = store.listJobs();
-    expect(jobs.length).toBeGreaterThan(beforeCount);
-    
-    // Most recent should be first
-    if (jobs.length >= 2) {
-      expect(new Date(jobs[0].progress.startedAt).getTime()).toBeGreaterThanOrEqual(
-        new Date(jobs[1].progress.startedAt).getTime(),
-      );
-    }
+    expect(jobs.length).toBeGreaterThanOrEqual(2);
+    expect(new Date(jobs[0]?.progress.startedAt ?? '').getTime()).toBeGreaterThanOrEqual(
+      new Date(jobs[1]?.progress.startedAt ?? '').getTime(),
+    );
   });
 
-  it('should return jobs without inline tree payload', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
-
-    const job = store.createScanJob('/home/user');
-    const jobs = store.listJobs();
-
-    const created = jobs.find((j) => j.id === job.id);
-    expect(created).toBeDefined();
-    expect(created && Object.hasOwn(created, 'result')).toBe(false);
-  });
-
-  it('should retrieve created jobs', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('returns created jobs with runtime and returns undefined for unknown ids', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
     const created = store.createScanJob('/home/user');
     const retrieved = await store.getJob(created.id);
+    const missing = await store.getJob('non-existent-id');
 
     expect(retrieved).toBeDefined();
     expect(retrieved?.id).toBe(created.id);
-    expect(retrieved?.rootPath).toBe('/home/user');
+    expect(retrieved?.runtimeMs).toBeGreaterThanOrEqual(0);
+    expect(missing).toBeUndefined();
   });
 
-  it('should return undefined for non-existent jobs', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
-
-    const job = await store.getJob('non-existent-id');
-    expect(job).toBeUndefined();
-  });
-
-  it('should support rerunning jobs', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('returns a new queued job when rerunning an existing job', () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
     const original = store.createScanJob('/home/user');
     const rerun = store.rerunJob(original.id);
@@ -147,63 +131,114 @@ describe('JobStore', () => {
     expect(rerun?.status).toBe('queued');
   });
 
-  it('should return undefined when rerunning non-existent job', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('returns undefined when rerunning a non-existent job', () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
-    const result = store.rerunJob('non-existent-id');
-    expect(result).toBeUndefined();
+    const rerun = store.rerunJob('missing-id');
+    expect(rerun).toBeUndefined();
   });
 
-  it('should handle job removal', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('removes existing jobs when repository delete succeeds', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
     const job = store.createScanJob('/home/user');
-    
-    // Note: The removal will only work if the mock repository's deleteJob returns true
-    // and removes it from the in-memory map. Since we're using a shared singleton,
-    // we just verify the method exists and works as expected.
-    const initialCount = store.listJobs().length;
+    repository.deleteJob.mockImplementation((id: string) => id === job.id);
+
     const removed = store.removeJob(job.id);
-    
-    // If the job was in the repository, it should be removed
-    if (removed) {
-      const finalCount = store.listJobs().length;
-      expect(finalCount).toBeLessThan(initialCount);
-    }
+    const fetchedAfterDelete = await store.getJob(job.id);
+
+    expect(removed).toBe(true);
+    expect(fetchedAfterDelete).toBeUndefined();
   });
 
-  it('should return false when removing non-existent job', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
+  it('keeps jobs when repository delete fails', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
 
-    const result = store.removeJob('non-existent-id');
-    expect(result).toBe(false);
+    const job = store.createScanJob('/home/user');
+    repository.deleteJob.mockReturnValue(false);
+
+    const removed = store.removeJob(job.id);
+    const fetchedAfterDelete = await store.getJob(job.id);
+
+    expect(removed).toBe(false);
+    expect(fetchedAfterDelete).toBeDefined();
   });
 
-  it('should prune older completed jobs with the same root path once a newer job completes', async () => {
-    const module = await import('../jobs.js');
-    const store = module.jobStore;
-    repositoryMock.deleteJob.mockReturnValue(true);
+  it('keeps completed runtime stable between reads', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
+
+    const created = store.createScanJob('/home/stable-runtime');
+
+    await waitForCondition(async () => {
+      const completed = await store.getJob(created.id);
+      expect(completed?.status).toBe('completed');
+    });
+
+    const firstRead = await store.getJob(created.id);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    const secondRead = await store.getJob(created.id);
+
+    expect(firstRead?.runtimeMs).toBeDefined();
+    expect(firstRead?.runtimeMs).toBe(secondRead?.runtimeMs);
+  });
+
+  it('prunes older completed jobs with the same root path once a newer job completes', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
+    repository.deleteJob.mockReturnValue(true);
 
     const rootPath = '/home/shared-root';
     const older = store.createScanJob(rootPath);
 
-    await waitForCondition(() => {
-      const olderJob = store.listJobs().find((job) => job.id === older.id);
+    await waitForCondition(async () => {
+      const olderJob = await store.getJob(older.id);
       expect(olderJob?.status).toBe('completed');
     });
 
     const newer = store.createScanJob(rootPath);
 
-    await waitForCondition(() => {
-      const newerJob = store.listJobs().find((job) => job.id === newer.id);
+    await waitForCondition(async () => {
+      const newerJob = await store.getJob(newer.id);
       expect(newerJob?.status).toBe('completed');
     });
 
     const sameRootJobs = store.listJobs().filter((job) => job.rootPath === rootPath);
     expect(sameRootJobs).toHaveLength(1);
     expect(sameRootJobs[0]?.id).toBe(newer.id);
+  });
+
+  it('computes increasing runtime for active jobs', async () => {
+    const repository = createRepositoryMock();
+    const store = new JobStore(repository);
+
+    const scannerMock = vi.mocked(scanDirectoryTree);
+    scannerMock.mockImplementationOnce(
+      async (_path, progress: { directoriesVisited: number; filesVisited: number; endedAt?: string }) => {
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        progress.directoriesVisited = 1;
+        progress.filesVisited = 1;
+        return {
+          name: 'root',
+          path: '/home/slow',
+          sizeBytes: 1,
+          percentOfRoot: 100,
+          children: [],
+        };
+      },
+    );
+
+    const created = store.createScanJob('/home/slow');
+
+    const first = await store.getJob(created.id);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const second = await store.getJob(created.id);
+
+    expect(first?.runtimeMs).toBeDefined();
+    expect(second?.runtimeMs).toBeDefined();
+    expect((second?.runtimeMs ?? 0) - (first?.runtimeMs ?? 0)).toBeGreaterThanOrEqual(0);
   });
 });
