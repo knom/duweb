@@ -8,7 +8,6 @@ import { cn } from '../lib/utils'
 
 interface JobsSidebarProps {
   sidebarOpen: boolean
-  statusLabel: string
   search: string
   filter: 'all' | JobStatus
   loadingJobs: boolean
@@ -26,7 +25,6 @@ interface JobsSidebarProps {
 
 export function JobsSidebar({
   sidebarOpen,
-  statusLabel,
   search,
   filter,
   loadingJobs,
@@ -53,7 +51,7 @@ export function JobsSidebar({
           <CardTitle className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-2">
               <FolderTree className="h-4 w-4" />
-              Jobs
+              Scan Jobs
             </span>
             <Button
               type="button"
@@ -66,7 +64,7 @@ export function JobsSidebar({
               <X className="h-4 w-4" />
             </Button>
           </CardTitle>
-          <CardDescription>{statusLabel}</CardDescription>
+          <CardDescription>All disk usage scan jobs</CardDescription>
         </CardHeader>
 
         <CardContent className="flex flex-1 flex-col gap-3 overflow-hidden">

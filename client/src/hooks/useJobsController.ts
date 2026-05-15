@@ -132,14 +132,6 @@ export function useJobsController() {
     setScanPath(selectedRootPath)
   }, [selectedJobId, selectedRootPath])
 
-  const statusLabel = useMemo(() => {
-    if (!job) {
-      return 'No job selected'
-    }
-
-    return `${job.status.toUpperCase()} - dirs ${job.progress.directoriesVisited}, files ${job.progress.filesVisited}`
-  }, [job])
-
   const filteredJobs = useMemo(() => {
     const searchValue = deferredSearch.trim().toLowerCase()
 
@@ -264,7 +256,6 @@ export function useJobsController() {
     sidebarOpen,
     setSidebarOpen,
     fetchPathSuggestions,
-    statusLabel,
     filteredJobs,
     startScan,
     rerunSelectedJob,

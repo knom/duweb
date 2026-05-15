@@ -20,7 +20,6 @@ function App() {
     sidebarOpen,
     setSidebarOpen,
     fetchPathSuggestions,
-    statusLabel,
     filteredJobs,
     startScan,
     rerunSelectedJob,
@@ -56,7 +55,6 @@ function App() {
         <div className="grid flex-1 min-h-0 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
           <JobsSidebar
             sidebarOpen={sidebarOpen}
-            statusLabel={statusLabel}
             search={search}
             filter={filter}
             loadingJobs={loadingJobs}
