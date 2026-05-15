@@ -85,7 +85,7 @@ export function TreeNodeRow({
         <span className="justify-self-end font-mono text-[12px] text-slate-500">{node.percentOfRoot.toFixed(2)}%</span>
         <div className="relative h-1.5 overflow-hidden rounded-full bg-slate-200/70" aria-hidden="true">
           <div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500"
+            className="absolute inset-y-0 left-0 rounded-full bg-linear-to-r from-emerald-500 to-cyan-500"
             style={{ width: `${Math.min(100, node.percentOfRoot)}%` }}
           />
         </div>

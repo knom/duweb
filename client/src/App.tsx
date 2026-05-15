@@ -95,7 +95,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [fetchJob])
 
   useEffect(() => {
     if (!job || (job.status !== 'queued' && job.status !== 'running')) {
@@ -222,7 +222,7 @@ function App() {
       setJobs((current) => {
         const updated = current.filter((item) => item.id !== job.id)
         if (updated.length > 0) {
-              void fetchJob(updated[0].id).then((full) => setJob(full))
+          void fetchJob(updated[0].id).then((full) => setJob(full))
         } else {
           setJob(null)
         }
@@ -235,7 +235,7 @@ function App() {
 
   return (
     <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_10%_15%,rgba(14,165,233,0.18),transparent_38%),radial-gradient(circle_at_88%_0%,rgba(16,185,129,0.14),transparent_36%),linear-gradient(170deg,#f5f7fb_0%,#eef3f8_42%,#f8fafc_100%)] text-slate-900">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1280px] flex-col gap-4 p-0 md:p-6">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col gap-4 p-0 md:p-6">
         <AppHeader
           logoUrl={logoUrl}
           sidebarOpen={sidebarOpen}

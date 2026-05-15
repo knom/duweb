@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -20,15 +20,36 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
   const [collapseLevel, setCollapseLevel] = useState<number | null>(null)
   const [collapseSignal, setCollapseSignal] = useState(0)
 
+  const clearTreeState = useCallback((): void => {
+    setRootNode(null)
+    setChildrenByParent({})
+    setLoadingParents({})
+    setTreeUnavailable(false)
+    requestedParentsRef.current = new Set()
+  }, [])
+
+  const markLoading = useCallback((nodeId: number, loading: boolean): void => {
+    setLoadingParents((state) => ({ ...state, [nodeId]: loading }))
+  }, [])
+
+  const loadNodeChildren = useCallback(
+    async (jobId: string, nodeId: number): Promise<DirectoryNode[]> => {
+      const response = await fetch(apiUrl(`/jobs/${jobId}/tree/nodes/${nodeId}/children`))
+      if (!response.ok) {
+        return []
+      }
+
+      const payload = (await response.json()) as { children?: DirectoryNode[] }
+      return Array.isArray(payload.children) ? payload.children : []
+    },
+    [apiUrl],
+  )
+
   useEffect(() => {
     let cancelled = false
 
     async function loadRoot(): Promise<void> {
-      setRootNode(null)
-      setChildrenByParent({})
-      setLoadingParents({})
-      setTreeUnavailable(false)
-      requestedParentsRef.current = new Set()
+      clearTreeState()
 
       if (!job || job.status !== 'completed') {
         return
@@ -60,7 +81,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
     return () => {
       cancelled = true
     }
-  }, [apiUrl, job?.id, job?.status])
+  }, [apiUrl, clearTreeState, job, job?.id, job?.status])
 
   useEffect(() => {
     if (!job || job.status !== 'completed' || !rootNode) {
@@ -84,12 +105,10 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
         }
 
         requestedParentsRef.current.add(current.id)
-        setLoadingParents((state) => ({ ...state, [current.id]: true }))
+        markLoading(current.id, true)
 
         try {
-          const response = await fetch(apiUrl(`/jobs/${jobId}/tree/nodes/${current.id}/children`))
-          const payload = response.ok ? ((await response.json()) as { children?: DirectoryNode[] }) : undefined
-          const children = Array.isArray(payload?.children) ? payload.children : []
+          const children = await loadNodeChildren(jobId, current.id)
 
           if (cancelled) {
             return
@@ -103,7 +122,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
           }
         } finally {
           if (!cancelled) {
-            setLoadingParents((state) => ({ ...state, [current.id]: false }))
+            markLoading(current.id, false)
           }
         }
       }
@@ -114,7 +133,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
     return () => {
       cancelled = true
     }
-  }, [apiUrl, job?.id, job?.status, rootNode])
+  }, [job?.id, job?.status, loadNodeChildren, markLoading, rootNode])
 
   const maxDepth = useMemo(() => {
     if (!rootNode) {
@@ -154,25 +173,16 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
 
     requestedParentsRef.current.add(node.id)
 
-    setLoadingParents((current) => ({ ...current, [node.id]: true }))
+    markLoading(node.id, true)
 
     try {
-      const response = await fetch(apiUrl(`/jobs/${job.id}/tree/nodes/${node.id}/children`))
-      if (!response.ok) {
-        setChildrenByParent((current) => ({
-          ...current,
-          [node.id]: [],
-        }))
-        return
-      }
-
-      const payload = (await response.json()) as { children?: DirectoryNode[] }
+      const payload = await loadNodeChildren(job.id, node.id)
       setChildrenByParent((current) => ({
         ...current,
-        [node.id]: Array.isArray(payload.children) ? payload.children : [],
+        [node.id]: payload,
       }))
     } finally {
-      setLoadingParents((current) => ({ ...current, [node.id]: false }))
+      markLoading(node.id, false)
     }
   }
 
