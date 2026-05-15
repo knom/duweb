@@ -128,4 +128,83 @@ describe('useJobsController', () => {
     expect(result.current.jobs[0]?.id).toBe('job-3')
     expect(result.current.scanPath).toBe('/var/log')
   })
+
+  it('reloads jobs list after a queued job reaches completed status', async () => {
+    const initialQueuedJob = {
+      id: 'job-2',
+      status: 'queued',
+      rootPath: '/var/log',
+      progress: { directoriesVisited: 0, filesVisited: 0, startedAt: '2026-05-14T11:00:00.000Z' },
+    }
+
+    const completedJob = {
+      id: 'job-2',
+      status: 'completed',
+      rootPath: '/var/log',
+      progress: {
+        directoriesVisited: 10,
+        filesVisited: 20,
+        startedAt: '2026-05-14T11:00:00.000Z',
+        endedAt: '2026-05-14T11:00:05.000Z',
+      },
+    }
+
+    const refreshedList = [
+      completedJob,
+      {
+        id: 'job-other',
+        status: 'completed',
+        rootPath: '/opt/data',
+        progress: { directoriesVisited: 1, filesVisited: 2, startedAt: '2026-05-14T10:00:00.000Z' },
+      },
+    ]
+
+    let jobsListCallCount = 0
+    let jobDetailsCallCount = 0
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/jobs') && (!init || init.method === undefined)) {
+        jobsListCallCount += 1
+
+        if (jobsListCallCount === 1) {
+          return jsonResponse([initialQueuedJob])
+        }
+
+        return jsonResponse(refreshedList)
+      }
+
+      if (url.endsWith('/api/jobs/job-2')) {
+        jobDetailsCallCount += 1
+
+        if (jobDetailsCallCount === 1) {
+          return jsonResponse(initialQueuedJob)
+        }
+
+        return jsonResponse(completedJob)
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    expect(result.current.selectedJobId).toBe('job-2')
+
+    await waitFor(
+      () => {
+        expect(result.current.jobs).toHaveLength(2)
+      },
+      { timeout: 3_000 },
+    )
+
+    expect(result.current.jobs[0]?.id).toBe('job-2')
+    expect(jobsListCallCount).toBe(2)
+  })
 })

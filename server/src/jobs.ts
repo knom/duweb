@@ -86,6 +86,37 @@ class JobStore {
     );
   }
 
+  private pruneOlderJobsForRootPath(completedJob: ScanJob): void {
+    const completedStartedAt = new Date(completedJob.progress.startedAt).getTime();
+
+    for (const existing of this.jobs.values()) {
+      if (existing.id === completedJob.id) {
+        continue;
+      }
+
+      if (existing.rootPath !== completedJob.rootPath) {
+        continue;
+      }
+
+      if (existing.status === 'queued' || existing.status === 'running') {
+        continue;
+      }
+
+      const existingStartedAt = new Date(existing.progress.startedAt).getTime();
+      if (existingStartedAt > completedStartedAt) {
+        continue;
+      }
+
+      const removed = this.repository.deleteJob(existing.id);
+      if (removed) {
+        this.jobs.delete(existing.id);
+        console.log(
+          `[JobStore] Pruned older job ${existing.id} for root path ${completedJob.rootPath} after completion of ${completedJob.id}`,
+        );
+      }
+    }
+  }
+
   private async runJob(id: string): Promise<void> {
     const job = this.jobs.get(id);
     if (!job) {
@@ -113,6 +144,10 @@ class JobStore {
     } finally {
       job.progress.endedAt = new Date().toISOString();
       this.repository.saveJob(job);
+
+      if (job.status === 'completed') {
+        this.pruneOlderJobsForRootPath(job);
+      }
     }
   }
 }

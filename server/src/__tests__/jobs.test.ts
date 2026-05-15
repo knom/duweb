@@ -1,4 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { repositoryMock } = vi.hoisted(() => ({
+  repositoryMock: {
+    initialize: vi.fn(),
+    listJobs: vi.fn(() => []),
+    saveJob: vi.fn(),
+    saveJobTree: vi.fn(),
+    getJobRootNode: vi.fn(),
+    getJobNodeChildrenBatch: vi.fn(() => ({})),
+    getJob: vi.fn(),
+    deleteJob: vi.fn(() => false),
+  },
+}));
 
 // Mock dependencies
 vi.mock('../scanner.js', () => ({
@@ -17,19 +30,30 @@ vi.mock('../scanner.js', () => ({
 }));
 
 vi.mock('../repositories/createJobRepository.js', () => ({
-  createJobRepository: () => ({
-    initialize: vi.fn(),
-    listJobs: vi.fn(() => []),
-    saveJob: vi.fn(),
-    saveJobTree: vi.fn(),
-    getJobRootNode: vi.fn(),
-    getJobNodeChildren: vi.fn(() => []),
-    getJob: vi.fn(),
-    deleteJob: vi.fn(() => false),
-  }),
+  createJobRepository: () => repositoryMock,
 }));
 
+async function waitForCondition(assertion: () => void, timeoutMs = 2000): Promise<void> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      assertion();
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+
+  assertion();
+}
+
 describe('JobStore', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    repositoryMock.deleteJob.mockReturnValue(false);
+  });
+
   it('should be importable', async () => {
     const module = await import('../jobs.js');
     expect(module.jobStore).toBeDefined();
@@ -156,5 +180,30 @@ describe('JobStore', () => {
 
     const result = store.removeJob('non-existent-id');
     expect(result).toBe(false);
+  });
+
+  it('should prune older completed jobs with the same root path once a newer job completes', async () => {
+    const module = await import('../jobs.js');
+    const store = module.jobStore;
+    repositoryMock.deleteJob.mockReturnValue(true);
+
+    const rootPath = '/home/shared-root';
+    const older = store.createScanJob(rootPath);
+
+    await waitForCondition(() => {
+      const olderJob = store.listJobs().find((job) => job.id === older.id);
+      expect(olderJob?.status).toBe('completed');
+    });
+
+    const newer = store.createScanJob(rootPath);
+
+    await waitForCondition(() => {
+      const newerJob = store.listJobs().find((job) => job.id === newer.id);
+      expect(newerJob?.status).toBe('completed');
+    });
+
+    const sameRootJobs = store.listJobs().filter((job) => job.rootPath === rootPath);
+    expect(sameRootJobs).toHaveLength(1);
+    expect(sameRootJobs[0]?.id).toBe(newer.id);
   });
 });

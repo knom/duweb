@@ -47,6 +47,21 @@ export function useJobsController() {
     return payload.suggestions.filter((item): item is string => typeof item === 'string')
   }, [])
 
+  const fetchJobsList = useCallback(async (): Promise<ScanJob[] | null> => {
+    try {
+      const response = await fetch(apiUrl('/jobs'))
+      if (!response.ok) {
+        setError('Unable to load jobs.')
+        return null
+      }
+
+      return (await response.json()) as ScanJob[]
+    } catch {
+      setError('Server is not reachable.')
+      return null
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -54,15 +69,10 @@ export function useJobsController() {
       setLoadingJobs(true)
 
       try {
-        const response = await fetch(apiUrl('/jobs'))
-        if (!response.ok) {
-          if (!cancelled) {
-            setError('Unable to load jobs.')
-          }
+        const existingJobs = await fetchJobsList()
+        if (!existingJobs) {
           return
         }
-
-        const existingJobs = (await response.json()) as ScanJob[]
 
         if (cancelled) {
           return
@@ -78,10 +88,6 @@ export function useJobsController() {
         if (!cancelled) {
           setJob(first)
         }
-      } catch {
-        if (!cancelled) {
-          setError('Server is not reachable. Start the backend on port 3001.')
-        }
       } finally {
         if (!cancelled) {
           setLoadingJobs(false)
@@ -94,7 +100,7 @@ export function useJobsController() {
     return () => {
       cancelled = true
     }
-  }, [fetchJob])
+  }, [fetchJob, fetchJobsList])
 
   const jobId = job?.id
   const jobStatus = job?.status
@@ -114,12 +120,21 @@ export function useJobsController() {
       const updated = (await response.json()) as ScanJob
       setJob(updated)
       setJobs((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+
+      if (updated.status === 'completed') {
+        const refreshedJobs = await fetchJobsList()
+        if (!refreshedJobs) {
+          return
+        }
+
+        setJobs(refreshedJobs)
+      }
     }, 1200)
 
     return () => {
       window.clearInterval(timer)
     }
-  }, [jobId, jobStatus])
+  }, [fetchJobsList, jobId, jobStatus])
 
   const selectedRootPath = job?.rootPath
   const selectedJobId = job?.id
