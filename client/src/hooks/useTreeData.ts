@@ -11,6 +11,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
   const [childrenByParent, setChildrenByParent] = useState<Record<number, DirectoryNode[]>>({})
   const [loadingParents, setLoadingParents] = useState<Record<number, boolean>>({})
   const [treeUnavailable, setTreeUnavailable] = useState(false)
+  const [isPostLoading, setIsPostLoading] = useState(false)
   const [selectedLevel, setSelectedLevel] = useState(1)
   const [collapseLevel, setCollapseLevel] = useState<number | null>(null)
   const [collapseSignal, setCollapseSignal] = useState(0)
@@ -22,6 +23,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
     setChildrenByParent({})
     setLoadingParents({})
     setTreeUnavailable(false)
+    setIsPostLoading(false)
     requestedParentsRef.current = new Set()
   }, [])
 
@@ -94,36 +96,44 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
     const queue: DirectoryNode[] = [rootNode]
 
     async function prefetchTree(): Promise<void> {
-      while (!cancelled && queue.length > 0) {
-        const current = queue.shift()
-        if (!current || !current.hasChildren) {
-          continue
-        }
+      setIsPostLoading(true)
 
-        if (requestedParentsRef.current.has(current.id)) {
-          continue
-        }
-
-        requestedParentsRef.current.add(current.id)
-        markLoading(current.id, true)
-
-        try {
-          const children = await loadNodeChildren(resolvedJobId, current.id)
-
-          if (cancelled) {
-            return
+      try {
+        while (!cancelled && queue.length > 0) {
+          const current = queue.shift()
+          if (!current || !current.hasChildren) {
+            continue
           }
 
-          setChildrenByParent((state) => ({ ...state, [current.id]: children }))
-          for (const child of children) {
-            if (child.hasChildren) {
-              queue.push(child)
+          if (requestedParentsRef.current.has(current.id)) {
+            continue
+          }
+
+          requestedParentsRef.current.add(current.id)
+          markLoading(current.id, true)
+
+          try {
+            const children = await loadNodeChildren(resolvedJobId, current.id)
+
+            if (cancelled) {
+              return
+            }
+
+            setChildrenByParent((state) => ({ ...state, [current.id]: children }))
+            for (const child of children) {
+              if (child.hasChildren) {
+                queue.push(child)
+              }
+            }
+          } finally {
+            if (!cancelled) {
+              markLoading(current.id, false)
             }
           }
-        } finally {
-          if (!cancelled) {
-            markLoading(current.id, false)
-          }
+        }
+      } finally {
+        if (!cancelled) {
+          setIsPostLoading(false)
         }
       }
     }
@@ -132,6 +142,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
 
     return () => {
       cancelled = true
+      setIsPostLoading(false)
     }
   }, [jobId, jobStatus, loadNodeChildren, markLoading, rootNode])
 
@@ -191,6 +202,7 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
   return {
     rootNode,
     treeUnavailable,
+    isPostLoading,
     levelOptions,
     selectedLevel,
     setSelectedLevel,

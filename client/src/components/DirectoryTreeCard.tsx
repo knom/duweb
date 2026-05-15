@@ -14,6 +14,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
   const {
     rootNode,
     treeUnavailable,
+    isPostLoading,
     levelOptions,
     selectedLevel,
     setSelectedLevel,
@@ -44,6 +45,7 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
             onSelectedLevelChange={setSelectedLevel}
             onCollapse={applyCollapse}
             jobStatus={job?.status}
+            isPostLoading={isPostLoading}
           />
         </div>
       </CardHeader>

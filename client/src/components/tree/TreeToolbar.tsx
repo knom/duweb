@@ -1,3 +1,4 @@
+import { Loader2 } from 'lucide-react'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import type { JobStatus } from '../../types/scan'
@@ -9,6 +10,7 @@ interface TreeToolbarProps {
   onSelectedLevelChange: (level: number) => void
   onCollapse: () => void
   jobStatus?: JobStatus
+  isPostLoading: boolean
 }
 
 export function TreeToolbar({
@@ -18,9 +20,16 @@ export function TreeToolbar({
   onSelectedLevelChange,
   onCollapse,
   jobStatus,
+  isPostLoading,
 }: TreeToolbarProps) {
   return (
     <div className="flex items-center gap-2">
+      {isPostLoading && (
+        <span className="inline-flex items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 py-1 text-xs font-medium text-cyan-700">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Loading...
+        </span>
+      )}
       {showControls && (
         <>
           <select
