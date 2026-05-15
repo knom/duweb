@@ -6,6 +6,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input'
 import { cn } from '../lib/utils'
 
+function formatDuration(runtimeMs?: number): string {
+  if (runtimeMs === undefined || !Number.isFinite(runtimeMs) || runtimeMs < 0) {
+    return '0s'
+  }
+
+  const totalSeconds = Math.floor(runtimeMs / 1000)
+  const seconds = totalSeconds % 60
+  const minutes = Math.floor(totalSeconds / 60) % 60
+  const hours = Math.floor(totalSeconds / 3600)
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`
+  }
+
+  return `${seconds}s`
+}
+
 interface JobsSidebarProps {
   sidebarOpen: boolean
   search: string
@@ -135,7 +156,7 @@ export function JobsSidebar({
                       <button
                         type="button"
                         className={cn(
-                          'grid w-full grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 text-left transition-colors',
+                          'grid w-full min-h-20 grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 text-left transition-colors',
                           selected ? 'bg-cyan-50/80' : 'hover:bg-slate-50',
                         )}
                         onClick={() => onSelectJob(item)}
@@ -143,6 +164,15 @@ export function JobsSidebar({
                         <div>
                           <div className="truncate font-medium text-slate-800">{item.rootPath}</div>
                           <div className="text-xs text-slate-500">{new Date(item.progress.startedAt).toLocaleString()}</div>
+                          <div
+                            className={cn(
+                              'text-xs text-slate-500',
+                              item.status === 'running' ? 'invisible' : 'visible',
+                            )}
+                            aria-hidden={item.status === 'running'}
+                          >
+                            Runtime: {formatDuration(item.runtimeMs)}
+                          </div>
                         </div>
                         <Badge variant={item.status}>{item.status}</Badge>
                       </button>

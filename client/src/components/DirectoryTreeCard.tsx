@@ -5,6 +5,27 @@ import { TreeEmptyState } from './tree/TreeEmptyState'
 import { useTreeData } from '../hooks/useTreeData'
 import type { ScanJob } from '../types/scan'
 
+function formatDuration(runtimeMs?: number): string {
+  if (runtimeMs === undefined || !Number.isFinite(runtimeMs) || runtimeMs < 0) {
+    return '0s'
+  }
+
+  const totalSeconds = Math.floor(runtimeMs / 1000)
+  const seconds = totalSeconds % 60
+  const minutes = Math.floor(totalSeconds / 60) % 60
+  const hours = Math.floor(totalSeconds / 3600)
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`
+  }
+
+  return `${seconds}s`
+}
+
 interface DirectoryTreeCardProps {
   job: ScanJob | null
   apiUrl: (path: string) => string
@@ -31,10 +52,13 @@ export function DirectoryTreeCard({ job, apiUrl }: DirectoryTreeCardProps) {
       <CardHeader className="border-b border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle>Directory Tree</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <span>Directory Tree</span>
+              {job && <span>{job.rootPath}</span>}
+            </CardTitle>
             <CardDescription>
               {job
-                ? `Root ${job.rootPath} · ${job.progress.directoriesVisited} directories · ${job.progress.filesVisited} files`
+                ? `${job.progress.directoriesVisited} directories · ${job.progress.filesVisited} files${job.status !== 'running' ? ` · Runtime ${formatDuration(job.runtimeMs)}` : ''}`
                 : 'Choose or run a job to inspect disk usage.'}
             </CardDescription>
           </div>

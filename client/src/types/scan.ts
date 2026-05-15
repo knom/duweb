@@ -25,5 +25,6 @@ export interface ScanJob {
   status: JobStatus
   rootPath: string
   progress: ScanProgress
+  runtimeMs?: number
   error?: string
 }

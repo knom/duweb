@@ -7,6 +7,20 @@ import { createJobRepository } from './repositories/createJobRepository.js';
 class JobStore {
   private readonly jobs = new Map<string, ScanJob>();
 
+  private withRuntime(job: ScanJob): ScanJob {
+    const startedAtMs = Date.parse(job.progress.startedAt);
+    const endedAtMs = job.progress.endedAt ? Date.parse(job.progress.endedAt) : Date.now();
+
+    const runtimeMs = Number.isFinite(startedAtMs)
+      ? Math.max(0, (Number.isFinite(endedAtMs) ? endedAtMs : Date.now()) - startedAtMs)
+      : 0;
+
+    return {
+      ...job,
+      runtimeMs,
+    };
+  }
+
   constructor(private readonly repository: JobRepository = createJobRepository()) {
     this.repository.initialize();
 
@@ -37,7 +51,7 @@ class JobStore {
       void this.runJob(created.id);
     });
 
-    return created;
+    return this.withRuntime(created);
   }
 
   async getJob(id: string): Promise<ScanJob | undefined> {
@@ -47,7 +61,7 @@ class JobStore {
       return undefined;
     }
 
-    return cached;
+    return this.withRuntime(cached);
   }
 
   getRootNode(jobId: string): StoredDirectoryNode | undefined {
@@ -81,9 +95,9 @@ class JobStore {
   }
 
   listJobs(): ScanJob[] {
-    return [...this.jobs.values()].sort(
-      (a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime(),
-    );
+    return [...this.jobs.values()]
+      .sort((a, b) => new Date(b.progress.startedAt).getTime() - new Date(a.progress.startedAt).getTime())
+      .map((job) => this.withRuntime(job));
   }
 
   private pruneOlderJobsForRootPath(completedJob: ScanJob): void {
