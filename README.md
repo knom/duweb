@@ -7,27 +7,26 @@
 
 <img src="client/public/favicon.svg" alt="Disk Usage Web Logo" width="200" />
 
-Disk Usage Web is a browser-based tool for scanning directories and exploring disk usage visually.
+Disk Usage Web is a brwoser-based version of the famous `du`command, that allows scanning directories and exploring disk usage visually.
 
-It is intended for cases where you want a simple web UI instead of repeatedly running shell tools by hand. You point the app at a mounted directory, start a scan, and then browse the results as a collapsible tree with job history, status, and rerun support.
+It is intended for cases where you want a simple web UI instead of repeatedly running shell tools by hand.
 
-## What It Does
+## Screenshots
+**Desktop:**
 
-A typical workflow is:
+<img src="client/public/screenshot1.png" alt="Disk Usage Web Screenshot 1" height="400" />
 
-1. Open the web app.
-2. Enter a path that exists inside the container.
-3. Start a scan.
-4. Wait for the job to complete.
-5. Open the completed job and inspect the directory tree.
+**Mobile:**
 
-## Frameworks Used
+<img src="client/public/screenshot2.png" alt="Disk Usage Web Screenshot 2" height="400" />
+
+## Technologies Used
 
 A small overview of the main frameworks and runtime pieces:
 
+- TypeScript: typed frontend and backend code
 - React: frontend UI
 - Vite: frontend build tooling and development tooling
-- TypeScript: typed frontend and backend code
 - Express: backend HTTP API
 - SQLite: local persistence for scan jobs and tree data
 - Docker and Docker Compose: packaging and running the application
