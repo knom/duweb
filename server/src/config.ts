@@ -14,7 +14,6 @@ export interface ServerConfig {
   requireAuth: boolean;
   requireAuthGroup?: string;
   authHeaders: AuthHeaderConfig;
-  redisUrl?: string;
 }
 
 function parseBoolean(value: string | undefined, fallback = false): boolean {
@@ -74,7 +73,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   }
 
   const { rawBasePath, normalizedBasePath, apiPrefix } = normalizeBasePath(env.BASE_PATH);
-  const redisUrl = env.REDIS_URL?.trim() || undefined;
 
   const config: ServerConfig = {
     port: parsePort(env.PORT),
@@ -93,10 +91,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 
   if (requireAuthGroup) {
     config.requireAuthGroup = requireAuthGroup;
-  }
-
-  if (redisUrl) {
-    config.redisUrl = redisUrl;
   }
 
   return config;

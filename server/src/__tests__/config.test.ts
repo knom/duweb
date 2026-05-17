@@ -12,7 +12,6 @@ describe('config', () => {
       expect(config.apiPrefix).toBe('/api');
       expect(config.requireAuth).toBe(false);
       expect(config.requireAuthGroup).toBeUndefined();
-      expect(config.redisUrl).toBeUndefined();
     });
 
     it('should parse PORT env var', () => {
@@ -96,16 +95,6 @@ describe('config', () => {
       expect(config.requireAuthGroup).toBeUndefined();
     });
 
-    it('should parse REDIS_URL env var', () => {
-      const config = loadConfig({ REDIS_URL: 'redis://localhost:6379' });
-      expect(config.redisUrl).toBe('redis://localhost:6379');
-    });
-
-    it('should ignore empty REDIS_URL', () => {
-      const config = loadConfig({ REDIS_URL: '  ' });
-      expect(config.redisUrl).toBeUndefined();
-    });
-
     it('should parse custom auth header names', () => {
       const config = loadConfig({
         AUTH_HEADER_USERNAME: 'X-Remote-User',
@@ -154,7 +143,6 @@ describe('config', () => {
       expect(config.apiPrefix).toBe('/app/api');
       expect(config.requireAuth).toBe(true);
       expect(config.requireAuthGroup).toBe('users');
-      expect(config.redisUrl).toBe('redis://host:6379');
       expect(config.authHeaders.username).toBe('X-User');
     });
   });
