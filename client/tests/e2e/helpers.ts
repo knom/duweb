@@ -1,4 +1,15 @@
-import type { Page, Route } from '@playwright/test'
+import { test as base, type Page, type Route } from '@playwright/test'
+
+export { expect } from '@playwright/test'
+
+export const test = base.extend<object>({
+  page: async ({ page }, use) => {
+    await page.route('**/api/auth/me', (route) =>
+      fulfillJson(route, { requireAuth: false, identity: { groups: [] } }),
+    )
+    await use(page)
+  },
+})
 
 export function fulfillJson(route: Route, body: unknown, status = 200) {
   return route.fulfill({

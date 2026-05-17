@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson, mockAuthMe, mockNoSuggestions } from './helpers'
+import { expect, fulfillJson, mockAuthMe, mockNoSuggestions, test } from './helpers'
 
 test('shows auth error when scan start is unauthorized (401)', async ({ page }) => {
   await page.route('**/api/jobs', async (route) => {

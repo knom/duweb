@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
-import { fulfillJson, mockNoSuggestions } from './helpers'
+import { type Page } from '@playwright/test'
+import { expect, fulfillJson, mockNoSuggestions, test } from './helpers'
 
 async function mockInitialJobs(page: Page) {
   await page.route('**/api/jobs', async (route) => {

@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson, mockNoSuggestions } from './helpers'
+import { expect, fulfillJson, mockNoSuggestions, test } from './helpers'
 
 test('scan starts, polls, and finishes with completed status', async ({ page }) => {
   await page.route('**/api/jobs', async (route) => {
@@ -48,6 +47,10 @@ test('scan starts, polls, and finishes with completed status', async ({ page }) 
         endedAt: '2026-05-14T10:00:02.000Z',
       },
     })
+  })
+
+  await page.route('**/api/jobs/job-new/tree/children-batch', async (route) => {
+    await fulfillJson(route, { byParentId: {} })
   })
 
   await page.route('**/api/jobs/job-new/tree/root', async (route) => {

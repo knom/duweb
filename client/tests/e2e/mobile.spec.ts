@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson, mockNoSuggestions } from './helpers'
+import { expect, fulfillJson, mockNoSuggestions, test } from './helpers'
 
 test('mobile sidebar opens from hamburger and closes via overlay/select', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
@@ -22,6 +21,10 @@ test('mobile sidebar opens from hamburger and closes via overlay/select', async 
       rootPath: '/mnt/files',
       progress: { directoriesVisited: 1, filesVisited: 2, startedAt: '2026-05-14T10:00:00.000Z' },
     })
+  })
+
+  await page.route('**/api/jobs/job-mobile/tree/root', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not found' }) })
   })
 
   await mockNoSuggestions(page)

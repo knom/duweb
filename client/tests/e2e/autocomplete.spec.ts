@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson } from './helpers'
+import { expect, fulfillJson, test } from './helpers'
 
 test('autocomplete works for repeated selections without refocus', async ({ page }) => {
   await page.route('**/api/jobs', async (route) => {

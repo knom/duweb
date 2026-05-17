@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson, mockNoSuggestions } from './helpers'
+import { expect, fulfillJson, mockNoSuggestions, test } from './helpers'
 
 test('shows level options based on tree depth and supports collapse interaction', async ({ page }) => {
   await page.route('**/api/jobs', async (route) => {

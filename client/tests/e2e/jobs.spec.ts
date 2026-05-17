@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test'
-import { fulfillJson, mockNoSuggestions } from './helpers'
+import { expect, fulfillJson, mockNoSuggestions, test } from './helpers'
 
 test('selects job and removes selected job', async ({ page }) => {
   await page.route('**/api/jobs', async (route) => {
@@ -30,14 +29,8 @@ test('selects job and removes selected job', async ({ page }) => {
     })
   })
 
-  await page.route('**/api/jobs/job-2', async (route) => {
-    await fulfillJson(route, {
-      id: 'job-2',
-      status: 'failed',
-      rootPath: '/var/log',
-      progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T11:00:00.000Z' },
-      error: 'Scan failed',
-    })
+  await page.route('**/api/jobs/job-1/tree/root', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not found' }) })
   })
 
   await page.route('**/api/jobs/job-2/rerun', async (route) => {
@@ -49,7 +42,13 @@ test('selects job and removes selected job', async ({ page }) => {
       await route.fulfill({ status: 204, body: '' })
       return
     }
-    await route.continue()
+    await fulfillJson(route, {
+      id: 'job-2',
+      status: 'failed',
+      rootPath: '/var/log',
+      progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T11:00:00.000Z' },
+      error: 'Scan failed',
+    })
   })
 
   await page.goto('/')
@@ -125,6 +124,10 @@ test('search filters by path only and ignores job id', async ({ page }) => {
       rootPath: '/mnt/files',
       progress: { directoriesVisited: 2, filesVisited: 3, startedAt: '2026-05-14T10:00:00.000Z' },
     })
+  })
+
+  await page.route('**/api/jobs/job-alpha-123/tree/root', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not found' }) })
   })
 
   await mockNoSuggestions(page)
