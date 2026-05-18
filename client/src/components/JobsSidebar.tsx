@@ -22,7 +22,7 @@ interface JobsSidebarProps {
   onFilterChange: (value: 'all' | JobStatus) => void
   onSelectJob: (job: ScanJob) => void
   onRerunSelectedJob: () => void
-  onRemoveSelectedJob: (jobId: string) => void
+  onRemoveSelectedJob: () => void | Promise<void>
 }
 
 export function JobsSidebar({
@@ -43,10 +43,14 @@ export function JobsSidebar({
 }: JobsSidebarProps) {
   const [removingJobId, setRemovingJobId] = useState<string | null>(null)
 
-  const handleRemoveJob = async (jobId: string) => {
-    setRemovingJobId(jobId)
+  const handleRemoveJob = async () => {
+    if (!selectedJobId) {
+      return
+    }
+
+    setRemovingJobId(selectedJobId)
     try {
-      await onRemoveSelectedJob(jobId)
+      await onRemoveSelectedJob()
     } finally {
       setRemovingJobId(null)
     }
@@ -120,8 +124,10 @@ export function JobsSidebar({
               type="button"
               variant="secondary"
               className="w-full"
-              onClick={handleRemoveJob}
-              disabled={removingJobId !== null}
+              onClick={() => {
+                void handleRemoveJob()
+              }}
+              disabled={!hasSelectedJob || removingJobId !== null}
             >
               <Trash2 className="h-4 w-4" />
               {removingJobId ? 'Removing...' : 'Remove'}

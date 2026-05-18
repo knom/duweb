@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { DirectoryNode, ScanJob, StoredDirectoryNode } from '../types.js';
 import type { JobRepository } from './jobRepository.js';
-import { mapJobToRecord, mapRowToJob, mapRowToStoredNode, type JobNodeRow, type JobRow } from './jobMapper.js';
+import { JobMapper, type JobNodeRow, type JobRow } from './jobMapper.js';
 
 const dataDirectoryPath = resolve(process.cwd(), 'data');
 const databaseFilePath = resolve(dataDirectoryPath, 'jobs.sqlite');
@@ -107,7 +107,7 @@ export class SQLiteJobRepository implements JobRepository {
       )
       .all() as unknown as JobRow[];
 
-    return rows.map((row) => mapRowToJob(row));
+    return rows.map((row) => JobMapper.mapRowToJob(row));
   }
 
   getJob(id: string): ScanJob | undefined {
@@ -119,11 +119,11 @@ export class SQLiteJobRepository implements JobRepository {
       )
       .get(id) as unknown as JobRow | undefined;
 
-    return row ? mapRowToJob(row) : undefined;
+    return row ? JobMapper.mapRowToJob(row) : undefined;
   }
 
   saveJob(job: ScanJob): void {
-    const record = mapJobToRecord(job);
+    const record = JobMapper.mapJobToRecord(job);
     const createdAt = record.progress.startedAt;
     const updatedAt = new Date().toISOString();
     const endedAt = record.progress.endedAt ?? null;
@@ -221,7 +221,7 @@ export class SQLiteJobRepository implements JobRepository {
       )
       .get() as unknown as Omit<JobNodeRow, 'job_id'> | undefined;
 
-    return row ? mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow) : undefined;
+    return row ? JobMapper.mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow) : undefined;
   }
 
   getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
@@ -248,7 +248,7 @@ export class SQLiteJobRepository implements JobRepository {
     >;
 
     for (const row of rows) {
-      const node = mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow);
+      const node = JobMapper.mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow);
       const parentId = node.parentId;
 
       if (parentId === null) {
@@ -294,12 +294,12 @@ export class SQLiteJobRepository implements JobRepository {
       .all() as unknown as JobRow[];
 
     for (const row of rows) {
-      const job = mapRowToJob(row);
+      const job = JobMapper.mapRowToJob(row);
       job.status = 'failed';
       job.error = message;
       job.progress.endedAt = new Date().toISOString();
 
-      const record = mapJobToRecord(job);
+      const record = JobMapper.mapJobToRecord(job);
       const updatedAt = new Date().toISOString();
 
       this.db.prepare(

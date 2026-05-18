@@ -1,7 +1,7 @@
 import { createApp } from './app.js';
-import { loadConfig } from './config.js';
+import { ConfigLoader } from './config.js';
 
-const config = loadConfig();
+const config = ConfigLoader.loadConfig();
 const app = createApp(config);
 
 // Server startup

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { scanDirectoryTree } from './scanner.js';
+import { DirectoryScanner } from './scanner.js';
 import type { ScanJob, StoredDirectoryNode } from './types.js';
 import type { JobRepository } from './repositories/jobRepository.js';
 import { createJobRepository } from './repositories/createJobRepository.js';
@@ -142,7 +142,7 @@ export class JobStore {
     console.log(`[JobStore] Job running: ${id} (${job.rootPath})`);
 
     try {
-      const scannedTree = await scanDirectoryTree(job.rootPath, job.progress);
+      const scannedTree = await DirectoryScanner.scanDirectoryTree(job.rootPath, job.progress);
       this.repository.saveJobTree(job.id, scannedTree);
       job.status = 'completed';
       const duration = job.progress.endedAt
