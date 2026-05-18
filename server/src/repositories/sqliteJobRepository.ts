@@ -7,7 +7,7 @@ import { mapJobToRecord, mapRowToJob, mapRowToStoredNode, type JobNodeRow, type 
 
 const dataDirectoryPath = resolve(process.cwd(), 'data');
 const databaseFilePath = resolve(dataDirectoryPath, 'jobs.sqlite');
-const jobTreesDirectoryPath = resolve(dataDirectoryPath, 'job_trees');
+const jobTreesDirectoryPath = resolve(dataDirectoryPath, 'jobs');
 
 export class SQLiteJobRepository implements JobRepository {
   private readonly db: DatabaseSync;
