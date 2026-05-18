@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { DirectoryNode, ScanJob, StoredDirectoryNode } from '../types.js';
@@ -7,13 +7,51 @@ import { mapJobToRecord, mapRowToJob, mapRowToStoredNode, type JobNodeRow, type 
 
 const dataDirectoryPath = resolve(process.cwd(), 'data');
 const databaseFilePath = resolve(dataDirectoryPath, 'jobs.sqlite');
+const jobTreesDirectoryPath = resolve(dataDirectoryPath, 'job_trees');
 
 export class SQLiteJobRepository implements JobRepository {
   private readonly db: DatabaseSync;
+  private readonly jobTreeDbCache: Map<string, DatabaseSync> = new Map();
 
   constructor() {
     mkdirSync(dataDirectoryPath, { recursive: true });
+    mkdirSync(jobTreesDirectoryPath, { recursive: true });
     this.db = new DatabaseSync(databaseFilePath);
+  }
+
+  private getJobTreeDb(jobId: string): DatabaseSync {
+    const cached = this.jobTreeDbCache.get(jobId);
+    if (cached) {
+      return cached;
+    }
+
+    const jobDbPath = resolve(jobTreesDirectoryPath, `${jobId}.sqlite`);
+    const jobDb = new DatabaseSync(jobDbPath);
+    this.jobTreeDbCache.set(jobId, jobDb);
+    return jobDb;
+  }
+
+  private initializeJobTreeDb(db: DatabaseSync): void {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS job_nodes (
+        node_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_node_id INTEGER,
+        depth INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        path TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        percent_of_root REAL NOT NULL,
+        inaccessible INTEGER NOT NULL DEFAULT 0,
+        has_children INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(parent_node_id) REFERENCES job_nodes(node_id) ON DELETE CASCADE,
+        UNIQUE(path)
+      )
+    `);
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_job_nodes_parent
+      ON job_nodes(parent_node_id)
+    `);
   }
 
   initialize(): void {
@@ -30,29 +68,6 @@ export class SQLiteJobRepository implements JobRepository {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
-    `);
-
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS job_nodes (
-        node_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        job_id TEXT NOT NULL,
-        parent_node_id INTEGER,
-        depth INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        path TEXT NOT NULL,
-        size_bytes INTEGER NOT NULL,
-        percent_of_root REAL NOT NULL,
-        inaccessible INTEGER NOT NULL DEFAULT 0,
-        has_children INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY(job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-        FOREIGN KEY(parent_node_id) REFERENCES job_nodes(node_id) ON DELETE CASCADE,
-        UNIQUE(job_id, path)
-      )
-    `);
-
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_job_nodes_job_parent
-      ON job_nodes(job_id, parent_node_id)
     `);
 
     this.ensureNormalizedJobColumns();
@@ -141,15 +156,18 @@ export class SQLiteJobRepository implements JobRepository {
   }
 
   saveJobTree(jobId: string, root: DirectoryNode): void {
-    const deleteStmt = this.db.prepare('DELETE FROM job_nodes WHERE job_id = ?');
-    const insertStmt = this.db.prepare(
-      `INSERT INTO job_nodes (job_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    const jobDb = this.getJobTreeDb(jobId);
+    this.initializeJobTreeDb(jobDb);
+
+    const deleteStmt = jobDb.prepare('DELETE FROM job_nodes');
+    const insertStmt = jobDb.prepare(
+      `INSERT INTO job_nodes (parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
 
-    this.db.exec('BEGIN');
+    jobDb.exec('BEGIN');
     try {
-      deleteStmt.run(jobId);
+      deleteStmt.run();
 
       const stack: Array<{ node: DirectoryNode; parentId: number | null; depth: number }> = [
         { node: root, parentId: null, depth: 0 },
@@ -162,7 +180,6 @@ export class SQLiteJobRepository implements JobRepository {
         }
 
         const insertResult = insertStmt.run(
-          jobId,
           current.parentId,
           current.depth,
           current.node.name,
@@ -185,24 +202,26 @@ export class SQLiteJobRepository implements JobRepository {
         }
       }
 
-      this.db.exec('COMMIT');
+      jobDb.exec('COMMIT');
     } catch (error) {
-      this.db.exec('ROLLBACK');
+      jobDb.exec('ROLLBACK');
       throw error;
     }
   }
 
   getJobRootNode(jobId: string): StoredDirectoryNode | undefined {
-    const row = this.db
+    const jobDb = this.getJobTreeDb(jobId);
+
+    const row = jobDb
       .prepare(
-        `SELECT node_id, job_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
+        `SELECT node_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
          FROM job_nodes
-         WHERE job_id = ? AND parent_node_id IS NULL
+         WHERE parent_node_id IS NULL
          LIMIT 1`,
       )
-      .get(jobId) as unknown as JobNodeRow | undefined;
+      .get() as unknown as Omit<JobNodeRow, 'job_id'> | undefined;
 
-    return row ? mapRowToStoredNode(row) : undefined;
+    return row ? mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow) : undefined;
   }
 
   getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
@@ -210,17 +229,18 @@ export class SQLiteJobRepository implements JobRepository {
       return {};
     }
 
+    const jobDb = this.getJobTreeDb(jobId);
     const uniqueParentIds = [...new Set(parentNodeIds)];
     const placeholders = uniqueParentIds.map(() => '?').join(', ');
 
-    const rows = this.db
+    const rows = jobDb
       .prepare(
-        `SELECT node_id, job_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
+        `SELECT node_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
          FROM job_nodes
-         WHERE job_id = ? AND parent_node_id IN (${placeholders})
+         WHERE parent_node_id IN (${placeholders})
          ORDER BY parent_node_id ASC, size_bytes DESC, name ASC`,
       )
-      .all(jobId, ...uniqueParentIds) as unknown as JobNodeRow[];
+      .all(...uniqueParentIds) as unknown as Omit<JobNodeRow, 'job_id'>[];
 
     const byParentId = Object.fromEntries(uniqueParentIds.map((id) => [id, [] as StoredDirectoryNode[]])) as Record<
       number,
@@ -228,7 +248,7 @@ export class SQLiteJobRepository implements JobRepository {
     >;
 
     for (const row of rows) {
-      const node = mapRowToStoredNode(row);
+      const node = mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow);
       const parentId = node.parentId;
 
       if (parentId === null) {
@@ -244,6 +264,22 @@ export class SQLiteJobRepository implements JobRepository {
   }
 
   deleteJob(id: string): boolean {
+    // Close and remove from cache
+    const jobDb = this.jobTreeDbCache.get(id);
+    if (jobDb) {
+      jobDb.close();
+      this.jobTreeDbCache.delete(id);
+    }
+
+    // Delete per-job DB file
+    const jobDbPath = resolve(jobTreesDirectoryPath, `${id}.sqlite`);
+    try {
+      unlinkSync(jobDbPath);
+    } catch {
+      // File might not exist, which is okay
+    }
+
+    // Delete job from master DB
     const result = this.db.prepare('DELETE FROM jobs WHERE id = ?').run(id);
     return result.changes > 0;
   }
