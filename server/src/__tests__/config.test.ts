@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { loadConfig } from '../config.js';
+import { ConfigLoader } from '../config.js';
 
 describe('config', () => {
   describe('loadConfig', () => {
     it('should load default config when no env vars provided', () => {
-      const config = loadConfig({});
+      const config = ConfigLoader.loadConfig({});
       
       expect(config.port).toBe(3001);
       expect(config.rawBasePath).toBe('');
@@ -15,39 +15,39 @@ describe('config', () => {
     });
 
     it('should parse PORT env var', () => {
-      const config = loadConfig({ PORT: '3000' });
+      const config = ConfigLoader.loadConfig({ PORT: '3000' });
       expect(config.port).toBe(3000);
     });
 
     it('should throw on invalid PORT', () => {
-      expect(() => loadConfig({ PORT: '99999' })).toThrow('Invalid PORT value');
-      expect(() => loadConfig({ PORT: '0' })).toThrow('Invalid PORT value');
-      expect(() => loadConfig({ PORT: 'abc' })).toThrow('Invalid PORT value');
-      expect(() => loadConfig({ PORT: '-1' })).toThrow('Invalid PORT value');
+      expect(() => ConfigLoader.loadConfig({ PORT: '99999' })).toThrow('Invalid PORT value');
+      expect(() => ConfigLoader.loadConfig({ PORT: '0' })).toThrow('Invalid PORT value');
+      expect(() => ConfigLoader.loadConfig({ PORT: 'abc' })).toThrow('Invalid PORT value');
+      expect(() => ConfigLoader.loadConfig({ PORT: '-1' })).toThrow('Invalid PORT value');
     });
 
     it('should parse BASE_PATH env var', () => {
-      const config1 = loadConfig({ BASE_PATH: '/disk-usage' });
+      const config1 = ConfigLoader.loadConfig({ BASE_PATH: '/disk-usage' });
       expect(config1.rawBasePath).toBe('/disk-usage');
       expect(config1.normalizedBasePath).toBe('/disk-usage');
       expect(config1.apiPrefix).toBe('/disk-usage/api');
 
-      const config2 = loadConfig({ BASE_PATH: 'disk-usage' });
+      const config2 = ConfigLoader.loadConfig({ BASE_PATH: 'disk-usage' });
       expect(config2.normalizedBasePath).toBe('/disk-usage');
 
-      const config3 = loadConfig({ BASE_PATH: '/disk-usage/' });
+      const config3 = ConfigLoader.loadConfig({ BASE_PATH: '/disk-usage/' });
       expect(config3.normalizedBasePath).toBe('/disk-usage');
 
-      const config4 = loadConfig({ BASE_PATH: '//disk-usage//' });
+      const config4 = ConfigLoader.loadConfig({ BASE_PATH: '//disk-usage//' });
       expect(config4.normalizedBasePath).toBe('/disk-usage');
     });
 
     it('should normalize empty BASE_PATH to root', () => {
-      const config1 = loadConfig({ BASE_PATH: '' });
+      const config1 = ConfigLoader.loadConfig({ BASE_PATH: '' });
       expect(config1.normalizedBasePath).toBe('');
       expect(config1.apiPrefix).toBe('/api');
 
-      const config2 = loadConfig({ BASE_PATH: '/' });
+      const config2 = ConfigLoader.loadConfig({ BASE_PATH: '/' });
       expect(config2.normalizedBasePath).toBe('');
       expect(config2.apiPrefix).toBe('/api');
     });
@@ -69,34 +69,34 @@ describe('config', () => {
       ];
 
       for (const { input, expected } of testCases) {
-        const config = loadConfig({ REQUIRE_AUTH: input });
+        const config = ConfigLoader.loadConfig({ REQUIRE_AUTH: input });
         expect(config.requireAuth).toBe(expected);
       }
     });
 
     it('should throw on invalid REQUIRE_AUTH value', () => {
-      expect(() => loadConfig({ REQUIRE_AUTH: 'maybe' })).toThrow('Invalid boolean value');
-      expect(() => loadConfig({ REQUIRE_AUTH: '2' })).toThrow('Invalid boolean value');
+      expect(() => ConfigLoader.loadConfig({ REQUIRE_AUTH: 'maybe' })).toThrow('Invalid boolean value');
+      expect(() => ConfigLoader.loadConfig({ REQUIRE_AUTH: '2' })).toThrow('Invalid boolean value');
     });
 
     it('should parse REQUIRE_AUTH_GROUP when REQUIRE_AUTH is true', () => {
-      const config = loadConfig({ REQUIRE_AUTH: 'true', REQUIRE_AUTH_GROUP: 'admin' });
+      const config = ConfigLoader.loadConfig({ REQUIRE_AUTH: 'true', REQUIRE_AUTH_GROUP: 'admin' });
       expect(config.requireAuthGroup).toBe('admin');
     });
 
     it('should throw if REQUIRE_AUTH_GROUP set without REQUIRE_AUTH', () => {
-      expect(() => loadConfig({ REQUIRE_AUTH: 'false', REQUIRE_AUTH_GROUP: 'admin' })).toThrow(
+      expect(() => ConfigLoader.loadConfig({ REQUIRE_AUTH: 'false', REQUIRE_AUTH_GROUP: 'admin' })).toThrow(
         'REQUIRE_AUTH_GROUP requires REQUIRE_AUTH=true',
       );
     });
 
     it('should ignore REQUIRE_AUTH_GROUP if set to empty string', () => {
-      const config = loadConfig({ REQUIRE_AUTH: 'true', REQUIRE_AUTH_GROUP: '  ' });
+      const config = ConfigLoader.loadConfig({ REQUIRE_AUTH: 'true', REQUIRE_AUTH_GROUP: '  ' });
       expect(config.requireAuthGroup).toBeUndefined();
     });
 
     it('should parse custom auth header names', () => {
-      const config = loadConfig({
+      const config = ConfigLoader.loadConfig({
         AUTH_HEADER_USERNAME: 'X-Remote-User',
         AUTH_HEADER_GROUPS: 'X-Remote-Groups',
         AUTH_HEADER_EMAIL: 'X-Remote-Email',
@@ -112,7 +112,7 @@ describe('config', () => {
     });
 
     it('should use default auth header names when not provided', () => {
-      const config = loadConfig({});
+      const config = ConfigLoader.loadConfig({});
       expect(config.authHeaders.username).toBe('x-forwarded-user');
       expect(config.authHeaders.groups).toBe('x-forwarded-groups');
       expect(config.authHeaders.email).toBe('x-forwarded-email');
@@ -121,11 +121,11 @@ describe('config', () => {
     });
 
     it('should throw if auth header name is empty', () => {
-      expect(() => loadConfig({ AUTH_HEADER_USERNAME: '  ' })).toThrow('must not be empty');
+      expect(() => ConfigLoader.loadConfig({ AUTH_HEADER_USERNAME: '  ' })).toThrow('must not be empty');
     });
 
     it('should build complete config with all options', () => {
-      const config = loadConfig({
+      const config = ConfigLoader.loadConfig({
         PORT: '4000',
         BASE_PATH: '/app',
         REQUIRE_AUTH: 'true',
