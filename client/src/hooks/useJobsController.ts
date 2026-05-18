@@ -227,7 +227,7 @@ export function useJobsController() {
       setScanPath(created.rootPath)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
-      setError('Server is not reachable. Start the backend on port 3001.')
+      setError('Server is not reachable.')
     } finally {
       setStarting(false)
     }
@@ -256,7 +256,7 @@ export function useJobsController() {
       setScanPath(created.rootPath)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
-      setError('Server is not reachable. Start the backend on port 3001.')
+      setError('Server is not reachable.')
     }
   }, [job])
 
@@ -300,7 +300,7 @@ export function useJobsController() {
         return updated
       })
     } catch {
-      setError('Server is not reachable. Start the backend on port 3001.')
+      setError('Server is not reachable.')
     }
   }, [fetchJob, job])
 
