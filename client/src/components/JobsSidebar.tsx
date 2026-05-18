@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input'
 import { cn } from '../lib/utils'
 import { formatDuration } from '../lib/formatDuration'
+import { useState } from 'react'
 
 interface JobsSidebarProps {
   sidebarOpen: boolean
@@ -21,7 +22,7 @@ interface JobsSidebarProps {
   onFilterChange: (value: 'all' | JobStatus) => void
   onSelectJob: (job: ScanJob) => void
   onRerunSelectedJob: () => void
-  onRemoveSelectedJob: () => void
+  onRemoveSelectedJob: (jobId: string) => void
 }
 
 export function JobsSidebar({
@@ -40,6 +41,17 @@ export function JobsSidebar({
   onRerunSelectedJob,
   onRemoveSelectedJob,
 }: JobsSidebarProps) {
+  const [removingJobId, setRemovingJobId] = useState<string | null>(null)
+
+  const handleRemoveJob = async (jobId: string) => {
+    setRemovingJobId(jobId)
+    try {
+      await onRemoveSelectedJob(jobId)
+    } finally {
+      setRemovingJobId(null)
+    }
+  }
+
   return (
     <aside
       className={cn(
@@ -108,11 +120,11 @@ export function JobsSidebar({
               type="button"
               variant="secondary"
               className="w-full"
-              onClick={onRemoveSelectedJob}
-              disabled={!hasSelectedJob}
+              onClick={handleRemoveJob}
+              disabled={removingJobId !== null}
             >
               <Trash2 className="h-4 w-4" />
-              Remove
+              {removingJobId ? 'Removing...' : 'Remove'}
             </Button>
           </div>
 
@@ -130,6 +142,7 @@ export function JobsSidebar({
               <ul className="divide-y divide-slate-200">
                 {filteredJobs.map((item) => {
                   const selected = selectedJobId === item.id
+                  const isRemoving = removingJobId === item.id
 
                   return (
                     <li key={item.id}>
@@ -140,6 +153,7 @@ export function JobsSidebar({
                           selected ? 'bg-cyan-50/80' : 'hover:bg-slate-50',
                         )}
                         onClick={() => onSelectJob(item)}
+                        disabled={isRemoving}
                       >
                         <div>
                           <div className="truncate font-medium text-slate-800">{item.rootPath}</div>
@@ -154,7 +168,11 @@ export function JobsSidebar({
                             Runtime: {formatDuration(item.runtimeMs)}
                           </div>
                         </div>
-                        <Badge variant={item.status}>{item.status}</Badge>
+                        {isRemoving ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                        ) : (
+                          <Badge variant={item.status}>{item.status}</Badge>
+                        )}
                       </button>
                     </li>
                   )
