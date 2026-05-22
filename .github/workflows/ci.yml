@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  check:
+  ci-build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
