@@ -6,6 +6,7 @@
     "lint": "npm run lint --prefix client && npm run lint --prefix server",
     "typecheck": "npm run typecheck --prefix client && npm run typecheck --prefix server",
     "test": "npm run test:unit --prefix client && npm run test:e2e --prefix client && npm run test --prefix server",
-    "check": "npm run lint && npm run typecheck && npm run test"
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "coverage:unit": "npm run test:unit:coverage --prefix client && npm run test:unit:coverage --prefix server"
   }
 }

@@ -37,3 +37,6 @@ jobs:
 
       - name: Run unified checks
         run: npm run check
+
+      - name: Run unit test coverage
+        run: npm run coverage:unit
