@@ -1,6 +1,6 @@
 # Disk Usage Web
 [![CI](https://github.com/knom/duweb/actions/workflows/ci.yml/badge.svg)](https://github.com/knom/duweb/actions/workflows/ci.yml)
-[![coverage](https://knom.github.io/duweb/badges/coverage.svg)](https://github.com/knom/duweb/actions)
+[![coverage](https://raw.githubusercontent.com/knom/duweb/gh-pages/badges/coverage.svg)](https://github.com/knom/duweb/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](#)
@@ -10,7 +10,7 @@
 
 <img src="client/public/favicon.svg" alt="Disk Usage Web Logo" width="200" />
 
-Disk Usage Web is a brwoser-based version of the famous `du`command, that allows scanning directories and exploring disk usage visually.
+Disk Usage Web is a browser-based version of the famous `du`command, that allows scanning directories and exploring disk usage visually.
 
 It is intended for cases where you want a simple web UI instead of repeatedly running shell tools by hand.
 
