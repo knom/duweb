@@ -51,9 +51,12 @@ jobs:
         if: success() || failure() # run whether steps succeed or not
         with:
           result-type: statements
-          upload-badge: false          
+          upload-badge: false
+          
+      - name: Rename file 
+        run: mv badge.svg coverage.svg
 
       - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           file_pattern: './coverage.svg'  
