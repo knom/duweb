@@ -7,7 +7,6 @@ import { JobMapper, type JobNodeRow, type JobRow } from './jobMapper.js';
 
 const defaultDataDirectoryPath = resolve(process.cwd(), 'data');
 const defaultDatabaseFilePath = resolve(defaultDataDirectoryPath, 'jobs.sqlite');
-const defaultJobTreesDirectoryPath = resolve(defaultDataDirectoryPath, 'jobs');
 
 export class SQLiteJobRepository implements JobRepository {
   private readonly db: DatabaseSync;

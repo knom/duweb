@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ScanJob, ScanProgress } from '../types.js';
+import type { ScanJob } from '../types.js';
 import { JobMapper, type JobNodeRow, type JobRow } from '../repositories/jobMapper.js';
 
 describe('JobMapper', () => {
