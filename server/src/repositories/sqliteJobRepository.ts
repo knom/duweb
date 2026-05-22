@@ -5,18 +5,25 @@ import type { DirectoryNode, ScanJob, StoredDirectoryNode } from '../types.js';
 import type { JobRepository } from './jobRepository.js';
 import { JobMapper, type JobNodeRow, type JobRow } from './jobMapper.js';
 
-const dataDirectoryPath = resolve(process.cwd(), 'data');
-const databaseFilePath = resolve(dataDirectoryPath, 'jobs.sqlite');
-const jobTreesDirectoryPath = resolve(dataDirectoryPath, 'jobs');
+const defaultDataDirectoryPath = resolve(process.cwd(), 'data');
+const defaultDatabaseFilePath = resolve(defaultDataDirectoryPath, 'jobs.sqlite');
+const defaultJobTreesDirectoryPath = resolve(defaultDataDirectoryPath, 'jobs');
 
 export class SQLiteJobRepository implements JobRepository {
   private readonly db: DatabaseSync;
   private readonly jobTreeDbCache: Map<string, DatabaseSync> = new Map();
+  private readonly dataDirectoryPath: string;
+  private readonly databaseFilePath: string;
+  private readonly jobTreesDirectoryPath: string;
 
-  constructor() {
-    mkdirSync(dataDirectoryPath, { recursive: true });
-    mkdirSync(jobTreesDirectoryPath, { recursive: true });
-    this.db = new DatabaseSync(databaseFilePath);
+  constructor(databaseFilePath?: string) {
+    this.databaseFilePath = databaseFilePath ?? defaultDatabaseFilePath;
+    this.dataDirectoryPath = resolve(this.databaseFilePath, '..');
+    this.jobTreesDirectoryPath = resolve(this.dataDirectoryPath, 'jobs');
+
+    mkdirSync(this.dataDirectoryPath, { recursive: true });
+    mkdirSync(this.jobTreesDirectoryPath, { recursive: true });
+    this.db = new DatabaseSync(this.databaseFilePath);
   }
 
   private getJobTreeDb(jobId: string): DatabaseSync {
@@ -25,7 +32,7 @@ export class SQLiteJobRepository implements JobRepository {
       return cached;
     }
 
-    const jobDbPath = resolve(jobTreesDirectoryPath, `${jobId}.sqlite`);
+    const jobDbPath = resolve(this.jobTreesDirectoryPath, `${jobId}.sqlite`);
     const jobDb = new DatabaseSync(jobDbPath);
     this.jobTreeDbCache.set(jobId, jobDb);
     return jobDb;
@@ -210,18 +217,23 @@ export class SQLiteJobRepository implements JobRepository {
   }
 
   getJobRootNode(jobId: string): StoredDirectoryNode | undefined {
-    const jobDb = this.getJobTreeDb(jobId);
+    try {
+      const jobDb = this.getJobTreeDb(jobId);
 
-    const row = jobDb
-      .prepare(
-        `SELECT node_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
-         FROM job_nodes
-         WHERE parent_node_id IS NULL
-         LIMIT 1`,
-      )
-      .get() as unknown as Omit<JobNodeRow, 'job_id'> | undefined;
+      const row = jobDb
+        .prepare(
+          `SELECT node_id, parent_node_id, depth, name, path, size_bytes, percent_of_root, inaccessible, has_children
+           FROM job_nodes
+           WHERE parent_node_id IS NULL
+           LIMIT 1`,
+        )
+        .get() as unknown as Omit<JobNodeRow, 'job_id'> | undefined;
 
-    return row ? JobMapper.mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow) : undefined;
+      return row ? JobMapper.mapRowToStoredNode({ ...row, job_id: jobId } as JobNodeRow) : undefined;
+    } catch {
+      // Database or table doesn't exist, tree hasn't been saved for this job
+      return undefined;
+    }
   }
 
   getJobNodeChildrenBatch(jobId: string, parentNodeIds: number[]): Record<number, StoredDirectoryNode[]> {
@@ -272,7 +284,7 @@ export class SQLiteJobRepository implements JobRepository {
     }
 
     // Delete per-job DB file
-    const jobDbPath = resolve(jobTreesDirectoryPath, `${id}.sqlite`);
+    const jobDbPath = resolve(this.jobTreesDirectoryPath, `${id}.sqlite`);
     try {
       unlinkSync(jobDbPath);
     } catch {
