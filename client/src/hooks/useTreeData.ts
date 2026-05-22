@@ -209,11 +209,17 @@ export function useTreeData({ job, apiUrl }: UseTreeDataArgs) {
       return 0
     }
 
-    const visibleDepths = Object.values(childrenByParent)
-      .flat()
-      .map((node) => node.depth)
-    visibleDepths.push(rootNode.depth)
-    return Math.max(...visibleDepths)
+    let maxVisibleDepth = rootNode.depth
+
+    for (const children of Object.values(childrenByParent)) {
+      for (const node of children) {
+        if (node.depth > maxVisibleDepth) {
+          maxVisibleDepth = node.depth
+        }
+      }
+    }
+
+    return maxVisibleDepth
   }, [childrenByParent, rootNode])
 
   const levelOptions = useMemo(() => Array.from({ length: maxDepth }, (_, index) => index + 1), [maxDepth])

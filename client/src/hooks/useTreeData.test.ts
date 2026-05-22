@@ -236,4 +236,64 @@ describe('useTreeData', () => {
 
     expect(batchRequestCount).toBe(2)
   })
+
+  it('handles very large child batches without stack overflow', async () => {
+    const hugeChildCount = 120000
+    const hugeChildren = Array.from({ length: hugeChildCount }, (_, index) => ({
+      id: 1000 + index,
+      parentId: 10,
+      jobId: 'job-1',
+      depth: 1,
+      name: `child-${index}`,
+      path: `/mnt/files/child-${index}`,
+      sizeBytes: hugeChildCount - index,
+      percentOfRoot: 0,
+      inaccessible: false,
+      hasChildren: false,
+    }))
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/jobs/job-1/tree/root')) {
+        return jsonResponse({
+          node: {
+            id: 10,
+            parentId: null,
+            jobId: 'job-1',
+            depth: 0,
+            name: 'files',
+            path: '/mnt/files',
+            sizeBytes: 500,
+            percentOfRoot: 100,
+            inaccessible: false,
+            hasChildren: true,
+          },
+        })
+      }
+
+      if (url.endsWith('/api/jobs/job-1/tree/children-batch')) {
+        return jsonResponse({
+          byParentId: {
+            '10': hugeChildren,
+          },
+        })
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useTreeData({ job: completedJob, apiUrl }))
+
+    await waitFor(() => {
+      expect(result.current.isPostLoading).toBe(false)
+    })
+
+    await waitFor(() => {
+      expect(result.current.getChildren(10)?.length).toBe(hugeChildCount)
+    })
+
+    expect(result.current.levelOptions).toEqual([1])
+  })
 })
