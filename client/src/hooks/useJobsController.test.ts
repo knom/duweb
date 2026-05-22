@@ -250,4 +250,242 @@ describe('useJobsController', () => {
       expect(result.current.authUsername).toBe('alice')
     })
   })
+
+  it('returns filtered path suggestions and falls back to an empty list for bad payloads', async () => {
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
+      if (url.endsWith('/api/jobs')) {
+        return jsonResponse([])
+      }
+
+      if (url.includes('/api/paths/suggest')) {
+        return jsonResponse({ suggestions: ['/srv/data', 123, '/srv/logs'] })
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    await expect(result.current.fetchPathSuggestions('/srv')).resolves.toEqual(['/srv/data', '/srv/logs'])
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.includes('/api/paths/suggest')) {
+        return jsonResponse({ suggestions: 'nope' })
+      }
+
+      return jsonResponse([])
+    })
+
+    await expect(result.current.fetchPathSuggestions('/srv')).resolves.toEqual([])
+  })
+
+  it('starts a scan and prepends the created job', async () => {
+    const createdJob = {
+      id: 'job-3',
+      status: 'queued',
+      rootPath: '/new/path',
+      progress: { directoriesVisited: 0, filesVisited: 0, startedAt: '2026-05-14T12:00:00.000Z' },
+    }
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
+      if (url.endsWith('/api/jobs') && (!init || init.method === undefined)) {
+        return jsonResponse([])
+      }
+
+      if (url.endsWith('/api/jobs/scan') && init?.method === 'POST') {
+        return jsonResponse(createdJob, 202)
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    act(() => {
+      result.current.setScanPath('/new/path')
+    })
+
+    await act(async () => {
+      await result.current.startScan()
+    })
+
+    expect(result.current.selectedJobId).toBe('job-3')
+    expect(result.current.jobs[0]?.id).toBe('job-3')
+    expect(result.current.scanPath).toBe('/new/path')
+    expect(result.current.starting).toBe(false)
+  })
+
+  it('surfaces start-scan errors from the server', async () => {
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
+      if (url.endsWith('/api/jobs') && (!init || init.method === undefined)) {
+        return jsonResponse([])
+      }
+
+      if (url.endsWith('/api/jobs/scan') && init?.method === 'POST') {
+        return jsonResponse({ error: 'Cannot scan path' }, 400)
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.startScan()
+    })
+
+    expect(result.current.error).toBe('Cannot scan path')
+    expect(result.current.starting).toBe(false)
+  })
+
+  it('removes the selected job and loads the next remaining job details', async () => {
+    const firstJob = {
+      id: 'job-1',
+      status: 'completed',
+      rootPath: '/first',
+      progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T10:00:00.000Z' },
+    }
+    const secondJob = {
+      id: 'job-2',
+      status: 'completed',
+      rootPath: '/second',
+      progress: { directoriesVisited: 2, filesVisited: 2, startedAt: '2026-05-14T11:00:00.000Z' },
+    }
+    const secondJobFull = {
+      ...secondJob,
+      progress: { ...secondJob.progress, filesVisited: 99 },
+    }
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
+      if (url.endsWith('/api/jobs') && (!init || init.method === undefined)) {
+        return jsonResponse([firstJob, secondJob])
+      }
+
+      if (url.endsWith('/api/jobs/job-1') && (!init || init.method === undefined)) {
+        return jsonResponse(firstJob)
+      }
+
+      if (url.endsWith('/api/jobs/job-1') && init?.method === 'DELETE') {
+        return jsonResponse({ ok: true })
+      }
+
+      if (url.endsWith('/api/jobs/job-2')) {
+        return jsonResponse(secondJobFull)
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.selectedJobId).toBe('job-1')
+    })
+
+    await waitFor(() => {
+      expect(result.current.jobs).toHaveLength(2)
+    })
+
+    await act(async () => {
+      await result.current.removeSelectedJob()
+    })
+
+    await waitFor(() => {
+      expect(result.current.selectedJobId).toBe('job-2')
+    })
+
+    await waitFor(() => {
+      expect(result.current.job?.progress.filesVisited).toBe(99)
+    })
+  })
+
+  it('selects a job and upgrades it with fetched details', async () => {
+    const job = {
+      id: 'job-1',
+      status: 'completed',
+      rootPath: '/base',
+      progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T10:00:00.000Z' },
+    }
+    const jobFull = {
+      ...job,
+      rootPath: '/base/full',
+      progress: { ...job.progress, filesVisited: 42 },
+    }
+
+    const fetchMock = vi.mocked(fetch)
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : input.toString()
+
+      if (url.endsWith('/api/auth/me')) {
+        return jsonResponse({ requireAuth: false, identity: { groups: [] } })
+      }
+
+      if (url.endsWith('/api/jobs')) {
+        return jsonResponse([job])
+      }
+
+      if (url.endsWith('/api/jobs/job-1')) {
+        return jsonResponse(jobFull)
+      }
+
+      return jsonResponse({ error: 'not-found' }, 404)
+    })
+
+    const { result } = renderHook(() => useJobsController())
+
+    await waitFor(() => {
+      expect(result.current.loadingJobs).toBe(false)
+    })
+
+    act(() => {
+      result.current.selectJob(job)
+    })
+
+    await waitFor(() => {
+      expect(result.current.job?.rootPath).toBe('/base/full')
+    })
+    expect(result.current.scanPath).toBe('/base/full')
+  })
 })
