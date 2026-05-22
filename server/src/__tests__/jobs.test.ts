@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobRepository } from '../repositories/jobRepository.js';
 import { JobStore } from '../jobs.js';
-import { scanDirectoryTree } from '../scanner.js';
+import { DirectoryScanner } from '../scanner.js';
 
-const { singletonRepositoryMock } = vi.hoisted(() => ({
+const { singletonRepositoryMock, scanDirectoryTreeMock } = vi.hoisted(() => ({
   singletonRepositoryMock: {
     initialize: vi.fn(),
     listJobs: vi.fn(() => []),
@@ -13,10 +13,7 @@ const { singletonRepositoryMock } = vi.hoisted(() => ({
     getJobNodeChildrenBatch: vi.fn(() => ({})),
     deleteJob: vi.fn(() => false),
   },
-}));
-
-vi.mock('../scanner.js', () => ({
-  scanDirectoryTree: vi.fn(async (path: string, progress: { directoriesVisited: number; filesVisited: number; endedAt?: string }) => {
+  scanDirectoryTreeMock: vi.fn(async (path: string, progress: { directoriesVisited: number; filesVisited: number; endedAt?: string }) => {
     progress.directoriesVisited = 10;
     progress.filesVisited = 100;
     progress.endedAt = new Date().toISOString();
@@ -28,6 +25,12 @@ vi.mock('../scanner.js', () => ({
       children: [],
     };
   }),
+}));
+
+vi.mock('../scanner.js', () => ({
+  DirectoryScanner: {
+    scanDirectoryTree: scanDirectoryTreeMock,
+  },
 }));
 
 vi.mock('../repositories/createJobRepository.js', () => ({
@@ -215,7 +218,7 @@ describe('JobStore', () => {
     const repository = createRepositoryMock();
     const store = new JobStore(repository);
 
-    const scannerMock = vi.mocked(scanDirectoryTree);
+    const scannerMock = vi.mocked(DirectoryScanner.scanDirectoryTree);
     scannerMock.mockImplementationOnce(
       async (_path, progress: { directoriesVisited: number; filesVisited: number; endedAt?: string }) => {
         await new Promise((resolve) => setTimeout(resolve, 80));
