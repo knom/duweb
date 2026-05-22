@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useJobsController } from './useJobsController'
+import type { JobStatus } from '../types/scan'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -444,7 +445,7 @@ describe('useJobsController', () => {
   it('selects a job and upgrades it with fetched details', async () => {
     const job = {
       id: 'job-1',
-      status: 'completed',
+      status: 'completed' as JobStatus,
       rootPath: '/base',
       progress: { directoriesVisited: 1, filesVisited: 1, startedAt: '2026-05-14T10:00:00.000Z' },
     }
