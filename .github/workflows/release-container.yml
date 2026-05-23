@@ -9,7 +9,7 @@ jobs:
   publish-container:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -47,6 +47,30 @@ jobs:
       - name: Run unified checks
         run: npm run check
 
+      - name: Build client
+        run: npm run build
+        working-directory: client
+
+      - name: Build server
+        run: npm run build
+        working-directory: server
+
+      - name: Assemble release bundle
+        run: |
+          mkdir -p release/server release/client-dist
+          cp -R server/dist release/server/dist
+          cp -R server/node_modules release/server/node_modules
+          cp server/package.json release/server/package.json
+          cp client/package.json release/client-package.json
+          cp -R client/dist/. release/client-dist
+          cp docker-compose.yml release/docker-compose.yml
+          cp README.md release/README.md
+
+      - name: Zip output
+        run: |
+          cd release
+          zip -r ../release_${{ github.ref_name }}.zip .
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -66,3 +90,14 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: ${{ github.ref_name }}
+          artifacts: release_${{ github.ref_name }}.zip
+          body: |
+            Automated release of version ${{ github.ref_name }}
+
+            Includes the runnable application bundle and the published container image:
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
