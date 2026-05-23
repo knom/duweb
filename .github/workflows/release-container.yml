@@ -15,8 +15,8 @@ jobs:
     steps:
       - name: Validate tag format
         run: |
-          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '${GITHUB_REF_NAME}' does not match required format vX.Y"
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Tag '${GITHUB_REF_NAME}' does not match required format vX.Y or vX.Y.Z"
             exit 1
           fi
 
@@ -50,6 +50,8 @@ jobs:
       - name: Build client
         run: npm run build
         working-directory: client
+        env:
+          VITE_APP_VERSION: ${{ github.ref_name }}
 
       - name: Build server
         run: npm run build
@@ -87,6 +89,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VITE_APP_VERSION=${{ github.ref_name }}
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
