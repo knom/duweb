@@ -13,6 +13,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe('useJobsController', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
+    window.history.replaceState(null, '', '/')
   })
 
   afterEach(() => {
