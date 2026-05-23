@@ -5,7 +5,9 @@ COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
 ARG BASE_PATH=/duweb
+ARG VITE_APP_VERSION=dev
 ENV VITE_BASE_PATH=${BASE_PATH}
+ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN npm run build
 
 FROM node:22-alpine AS server-builder

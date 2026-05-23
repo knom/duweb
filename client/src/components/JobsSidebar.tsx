@@ -41,6 +41,7 @@ export function JobsSidebar({
   onRerunSelectedJob,
   onRemoveSelectedJob,
 }: JobsSidebarProps) {
+  const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev'
   const [removingJobId, setRemovingJobId] = useState<string | null>(null)
 
   const handleRemoveJob = async () => {
@@ -136,7 +137,7 @@ export function JobsSidebar({
 
           {error && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
-          <div className="overflow-y-auto rounded-lg border border-slate-200">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200">
             {loadingJobs ? (
               <div className="flex items-center gap-2 px-3 py-4 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
@@ -186,6 +187,10 @@ export function JobsSidebar({
               </ul>
             )}
           </div>
+
+          <p className="text-center text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+            {appVersion}
+          </p>
         </CardContent>
       </Card>
     </aside>

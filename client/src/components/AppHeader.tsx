@@ -111,7 +111,7 @@ export function AppHeader({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="relative w-full sm:w-[360px]">
+          <div className="relative w-full sm:w-90">
             <label htmlFor="scan-path" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               Scan path
             </label>

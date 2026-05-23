@@ -67,6 +67,16 @@ describe('JobsSidebar', () => {
     expect(props.onCloseSidebar).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the configured app version in the sidebar footer', () => {
+    vi.stubEnv('VITE_APP_VERSION', 'v1.2.3')
+
+    renderSidebar()
+
+    expect(screen.getByText('v1.2.3')).toBeTruthy()
+
+    vi.unstubAllEnvs()
+  })
+
   it('renders empty state, filter changes, and disabled toolbar actions', () => {
     const { props } = renderSidebar({ filteredJobs: [], hasSelectedJob: false })
 
