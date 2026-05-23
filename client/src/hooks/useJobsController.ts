@@ -1,6 +1,24 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type { JobStatus, ScanJob } from '../types/scan'
 
+function getUrlJobId(): string | null {
+  return new URLSearchParams(window.location.search).get('job')
+}
+
+function setUrlJobId(id: string | null, replace = false): void {
+  const url = new URL(window.location.href)
+  if (id) {
+    url.searchParams.set('job', id)
+  } else {
+    url.searchParams.delete('job')
+  }
+  if (replace) {
+    window.history.replaceState(null, '', url.toString())
+  } else {
+    window.history.pushState(null, '', url.toString())
+  }
+}
+
 const API_BASE = `${import.meta.env.BASE_URL}api`
 
 function apiUrl(path: string): string {
@@ -131,7 +149,10 @@ export function useJobsController() {
           return
         }
 
-        const first = await fetchJob(existingJobs[0].id)
+        const urlJobId = getUrlJobId()
+        const initialId =
+          urlJobId && existingJobs.some((j) => j.id === urlJobId) ? urlJobId : existingJobs[0].id
+        const first = await fetchJob(initialId)
         if (!cancelled) {
           setJob((current) => {
             if (current) {
@@ -144,6 +165,9 @@ export function useJobsController() {
 
             return first
           })
+          if (first) {
+            setUrlJobId(first.id, true)
+          }
         }
       } finally {
         if (!cancelled) {
@@ -194,6 +218,39 @@ export function useJobsController() {
     }
   }, [fetchJobsList, jobId, jobStatus])
 
+  useEffect(() => {
+    function onPopState(): void {
+      const id = getUrlJobId()
+      setJobs((currentJobs) => {
+        if (!id) {
+          setJob(null)
+          return currentJobs
+        }
+
+        const found = currentJobs.find((j) => j.id === id)
+        if (found) {
+          setJob(found)
+          setScanPath(found.rootPath)
+          void fetchJob(id).then((full) => {
+            if (!full) {
+              return
+            }
+
+            setJob(full)
+            setScanPath(full.rootPath)
+          })
+        }
+
+        return currentJobs
+      })
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => {
+      window.removeEventListener('popstate', onPopState)
+    }
+  }, [fetchJob])
+
   const filteredJobs = useMemo(() => {
     const searchValue = deferredSearch.trim().toLowerCase()
 
@@ -225,6 +282,7 @@ export function useJobsController() {
       const created = (await response.json()) as ScanJob
       setJob(created)
       setScanPath(created.rootPath)
+      setUrlJobId(created.id)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
       setError('Server is not reachable.')
@@ -254,6 +312,7 @@ export function useJobsController() {
       const created = (await response.json()) as ScanJob
       setJob(created)
       setScanPath(created.rootPath)
+      setUrlJobId(created.id)
       setJobs((current) => [created, ...current.filter((item) => item.id !== created.id)])
     } catch {
       setError('Server is not reachable.')
@@ -293,8 +352,10 @@ export function useJobsController() {
               setScanPath(full.rootPath)
             }
           })
+          setUrlJobId(updated[0].id, true)
         } else {
           setJob(null)
+          setUrlJobId(null, true)
         }
 
         return updated
@@ -308,6 +369,7 @@ export function useJobsController() {
     (selectedJob: ScanJob): void => {
       setJob(selectedJob)
       setScanPath(selectedJob.rootPath)
+      setUrlJobId(selectedJob.id)
 
       void fetchJob(selectedJob.id).then((full) => {
         if (!full) {
