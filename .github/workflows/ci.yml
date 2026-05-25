@@ -62,14 +62,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin badges:refs/remotes/origin/badges 2>/dev/null || true
-          cp coverage.svg /tmp/coverage.svg
+          mv coverage.svg /tmp/coverage.svg
           if git show-ref --verify --quiet refs/remotes/origin/badges; then
             git checkout -B badges origin/badges
           else
             git checkout --orphan badges
             git rm -rf . --quiet
           fi
-          cp /tmp/coverage.svg coverage.svg
+          mv /tmp/coverage.svg coverage.svg
           git add coverage.svg
           git diff --staged --quiet || git commit -m "Update coverage badge [skip ci]"
           git push origin badges
