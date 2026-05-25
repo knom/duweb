@@ -69,6 +69,77 @@ describe('job tree routes', () => {
     vi.clearAllMocks();
   });
 
+  it('returns 400 for scan requests with an empty path', async () => {
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/scan').send({ path: '   ' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Body must contain a non-empty path field.');
+    expect(mockJobStore.createScanJob).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for scan requests with a non-string path', async () => {
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/scan').send({ path: 123 });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Body must contain a non-empty path field.');
+    expect(mockJobStore.createScanJob).not.toHaveBeenCalled();
+  });
+
+  it('creates a scan job for valid scan requests', async () => {
+    const createdJob: ScanJob = {
+      id: 'job-3',
+      status: 'queued',
+      rootPath: '/var/tmp',
+      progress: {
+        directoriesVisited: 0,
+        filesVisited: 0,
+        startedAt: '2026-01-01T00:00:00.000Z',
+      },
+    };
+    mockJobStore.createScanJob.mockReturnValue(createdJob);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/scan').send({ path: '  /var/tmp  ' });
+
+    expect(response.status).toBe(202);
+    expect(mockJobStore.createScanJob).toHaveBeenCalledWith('/var/tmp');
+    expect(response.body).toEqual(createdJob);
+  });
+
+  it('lists jobs', async () => {
+    mockJobStore.listJobs.mockReturnValue([completedJob, queuedJob]);
+    const app = buildApp();
+
+    const response = await request(app).get('/api/jobs');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([completedJob, queuedJob]);
+  });
+
+  it('returns 404 when fetching an unknown job', async () => {
+    mockJobStore.getJob.mockResolvedValue(undefined);
+    const app = buildApp();
+
+    const response = await request(app).get('/api/jobs/missing');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Job not found.');
+  });
+
+  it('returns a job when fetching a known job', async () => {
+    mockJobStore.getJob.mockResolvedValue(completedJob);
+    const app = buildApp();
+
+    const response = await request(app).get('/api/jobs/job-1');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(completedJob);
+  });
+
   it('returns 404 for root request when job does not exist', async () => {
     mockJobStore.getJob.mockResolvedValue(undefined);
     const app = buildApp();
@@ -140,6 +211,28 @@ describe('job tree routes', () => {
     expect(response.body.error).toBe('parentIds cannot contain more than 256 entries.');
   });
 
+  it('returns 404 for children batch when job does not exist', async () => {
+    mockJobStore.getJob.mockResolvedValue(undefined);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/missing/tree/children-batch').send({ parentIds: [10] });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Job not found.');
+    expect(mockJobStore.getNodeChildrenBatch).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 for children batch when job is not completed', async () => {
+    mockJobStore.getJob.mockResolvedValue(queuedJob);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/job-2/tree/children-batch').send({ parentIds: [10] });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe('Tree is only available for completed jobs.');
+    expect(mockJobStore.getNodeChildrenBatch).not.toHaveBeenCalled();
+  });
+
   it('returns batched children for completed jobs', async () => {
     const byParentId = {
       10: [
@@ -171,5 +264,52 @@ describe('job tree routes', () => {
       '10': byParentId[10],
       '11': byParentId[11],
     });
+  });
+
+  it('returns 404 when rerunning an unknown job', async () => {
+    mockJobStore.rerunJob.mockReturnValue(undefined);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/missing/rerun');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Job not found.');
+  });
+
+  it('reruns a known job', async () => {
+    const rerunJob: ScanJob = {
+      ...queuedJob,
+      id: 'job-4',
+      rootPath: '/rerun',
+    };
+    mockJobStore.rerunJob.mockReturnValue(rerunJob);
+    const app = buildApp();
+
+    const response = await request(app).post('/api/jobs/job-1/rerun');
+
+    expect(response.status).toBe(202);
+    expect(mockJobStore.rerunJob).toHaveBeenCalledWith('job-1');
+    expect(response.body).toEqual(rerunJob);
+  });
+
+  it('returns 404 when deleting an unknown job', async () => {
+    mockJobStore.removeJob.mockReturnValue(false);
+    const app = buildApp();
+
+    const response = await request(app).delete('/api/jobs/missing');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe('Job not found.');
+  });
+
+  it('deletes a known job', async () => {
+    mockJobStore.removeJob.mockReturnValue(true);
+    const app = buildApp();
+
+    const response = await request(app).delete('/api/jobs/job-1');
+
+    expect(response.status).toBe(204);
+    expect(mockJobStore.removeJob).toHaveBeenCalledWith('job-1');
+    expect(response.text).toBe('');
   });
 });
