@@ -46,6 +46,15 @@ jobs:
       - name: Merge coverage reports
         run: node scripts/merge-coverage.mjs
 
+      - name: Upload HTML coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-coverage-reports
+          path: |
+            client/coverage/**
+            server/coverage/**
+          if-no-files-found: error
+
       - name: Publish Results Badge
         uses: wjervis7/vitest-badge-action@v1.0.0
         if: success() || failure() # run whether steps succeed or not
