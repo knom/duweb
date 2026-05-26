@@ -1,7 +1,8 @@
 # Disk Usage Web
 [![CI](https://github.com/knom/duweb/actions/workflows/ci.yml/badge.svg)](https://github.com/knom/duweb/actions/workflows/ci.yml)
 [![coverage](https://raw.githubusercontent.com/knom/duweb/badges/coverage.svg)](https://github.com/knom/duweb/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) 
+[![CodeQL](https://github.com/knom/duweb/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/knom/duweb/actions/workflows/github-code-scanning/codeql) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) 
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](#)
 [![Node.js](https://img.shields.io/badge/Node.js-6DA55F?logo=node.js&logoColor=white)](#)
