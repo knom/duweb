@@ -29,14 +29,14 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.0.0",
     "@types/supertest": "^7.2.0",
-    "@vitest/ui": "^4.1.7",
+    "@vitest/ui": "^5.0.0",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "supertest": "^7.2.2",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
-    "vitest": "^4.1.7",
-    "@vitest/coverage-v8": "^4.1.7"
+    "vitest": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.0"
   }
 }
