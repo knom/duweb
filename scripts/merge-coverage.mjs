@@ -17,41 +17,26 @@ function mergeCoverageReports() {
   const serverTotal = serverSummary.total;
   const clientTotal = clientSummary.total;
 
-  // Merge by averaging the percentages
+  const mergeMetric = (name) => {
+    const server = serverTotal[name];
+    const client = clientTotal[name];
+    const total = server.total + client.total;
+    const covered = server.covered + client.covered;
+
+    return {
+      total,
+      covered,
+      skipped: server.skipped + client.skipped,
+      pct: (total === 0 ? 100 : (covered / total) * 100).toFixed(2),
+    };
+  };
+
   const merged = {
     total: {
-      lines: {
-        total: serverTotal.lines.total + clientTotal.lines.total,
-        covered: serverTotal.lines.covered + clientTotal.lines.covered,
-        skipped: serverTotal.lines.skipped + clientTotal.lines.skipped,
-        pct: (
-          (serverTotal.lines.pct + clientTotal.lines.pct) / 2
-        ).toFixed(2),
-      },
-      statements: {
-        total: serverTotal.statements.total + clientTotal.statements.total,
-        covered: serverTotal.statements.covered + clientTotal.statements.covered,
-        skipped: serverTotal.statements.skipped + clientTotal.statements.skipped,
-        pct: (
-          (serverTotal.statements.pct + clientTotal.statements.pct) / 2
-        ).toFixed(2),
-      },
-      functions: {
-        total: serverTotal.functions.total + clientTotal.functions.total,
-        covered: serverTotal.functions.covered + clientTotal.functions.covered,
-        skipped: serverTotal.functions.skipped + clientTotal.functions.skipped,
-        pct: (
-          (serverTotal.functions.pct + clientTotal.functions.pct) / 2
-        ).toFixed(2),
-      },
-      branches: {
-        total: serverTotal.branches.total + clientTotal.branches.total,
-        covered: serverTotal.branches.covered + clientTotal.branches.covered,
-        skipped: serverTotal.branches.skipped + clientTotal.branches.skipped,
-        pct: (
-          (serverTotal.branches.pct + clientTotal.branches.pct) / 2
-        ).toFixed(2),
-      },
+      lines: mergeMetric('lines'),
+      statements: mergeMetric('statements'),
+      functions: mergeMetric('functions'),
+      branches: mergeMetric('branches'),
     },
   };
 

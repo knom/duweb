@@ -6,18 +6,25 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   ci-build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22
           cache: npm
@@ -37,39 +44,78 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: client
 
-      - name: Run unified checks
-        run: npm run check
+      - name: Lint and typecheck
+        run: npm run lint && npm run typecheck
 
       - name: Run unit test coverage
         run: npm run coverage:unit
 
+      - name: Run end-to-end tests
+        run: npm run test:e2e --prefix client
+
+      - name: Test coverage merging
+        run: node --test scripts/merge-coverage.test.mjs
+
       - name: Merge coverage reports
         run: node scripts/merge-coverage.mjs
 
-      - name: Publish Results Badge
-        uses: wjervis7/vitest-badge-action@v1.0.0
-        if: success() || failure() # run whether steps succeed or not
+      - name: Build container on pull requests
+        if: github.event_name == 'pull_request'
+        run: docker build -t duweb-ci .
+
+      - name: Prepare badge values
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: coverage
+        run: |
+          node -e "const {pct, covered, total} = require('./coverage/coverage-summary.json').total.statements; console.log('status=' + pct + '% (' + covered + '/' + total + ')'); console.log('color=' + (Number(pct) >= 60 ? '31c653' : '800000'))" >> "$GITHUB_OUTPUT"
+
+      - name: Create coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: emibcn/badge-action@f9150fde070fcca0c4e832437611b44838fcd325 # v2.0.4
         with:
-          result-type: statements
-          upload-badge: false
-          
-      - name: Rename file 
-        run: mv badge.svg coverage.svg
+          label: Tests
+          status: ${{ steps.coverage.outputs.status }}
+          color: ${{ steps.coverage.outputs.color }}
+          path: coverage.svg
+
+      - name: Upload coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-badge
+          path: coverage.svg
+          if-no-files-found: error
+
+  publish-badge:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: ci-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Download coverage badge
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage-badge
+          path: ${{ runner.temp }}/coverage-badge
 
       - name: Commit badge to badges branch
-        if: github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && github.base_ref == 'main')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin badges:refs/remotes/origin/badges 2>/dev/null || true
-          mv coverage.svg /tmp/coverage.svg
-          if git show-ref --verify --quiet refs/remotes/origin/badges; then
+          badge_ref=$(git ls-remote --heads origin refs/heads/badges)
+          if [ -n "$badge_ref" ]; then
+            git fetch origin badges:refs/remotes/origin/badges
             git checkout -B badges origin/badges
           else
             git checkout --orphan badges
             git rm -rf . --quiet
           fi
-          mv /tmp/coverage.svg coverage.svg
+          cp "$RUNNER_TEMP/coverage-badge/coverage.svg" coverage.svg
           git add coverage.svg
           git diff --staged --quiet || git commit -m "Update coverage badge [skip ci]"
           git push origin badges
