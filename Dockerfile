@@ -1,4 +1,4 @@
-FROM node:22-alpine AS client-builder
+FROM node:26-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
@@ -10,7 +10,7 @@ ENV VITE_BASE_PATH=${BASE_PATH}
 ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN npm run build
 
-FROM node:22-alpine AS server-builder
+FROM node:26-alpine AS server-builder
 
 WORKDIR /app/server
 COPY server/package*.json ./
@@ -18,7 +18,7 @@ RUN npm ci
 COPY server/ ./
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
