@@ -341,6 +341,10 @@ Root verification:
 npm run check
 ```
 
+### Dependency updates
+
+Renovate runs daily at 03:17 UTC and can also be started manually from GitHub Actions. Configure the repository secret `RENOVATE_TOKEN` with a token that can read and write repository contents and pull requests. Renovate pull requests run the existing CI checks.
+
 ## Repository Layout
 
 ```text
